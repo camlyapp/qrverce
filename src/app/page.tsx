@@ -33,6 +33,11 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 
+const CANVAS_SIZE = 400;
+const QR_CODE_SIZE = 300;
+const QR_CODE_OFFSET = (CANVAS_SIZE - QR_CODE_SIZE) / 2;
+
+
 interface ColorInputProps {
   label: string;
   value: string;
@@ -77,11 +82,11 @@ export default function Home() {
   const [fontSize, setFontSize] = useState(40);
   const [fontFamily, setFontFamily] = useState("Inter");
   const [textRotation, setTextRotation] = useState(0);
-  const [textPosition, setTextPosition] = useState({ x: 150, y: 150 });
+  const [textPosition, setTextPosition] = useState({ x: CANVAS_SIZE / 2, y: CANVAS_SIZE / 2 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   const visibleCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const drawCanvas = useCallback(async () => {
@@ -89,33 +94,28 @@ export default function Home() {
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Clear canvas with background color
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Draw QR Code from hidden canvas if text is valid
-    if (text.trim() && canvasRef.current) {
+    if (text.trim() && qrCanvasRef.current) {
         try {
             const options: QRCode.QRCodeToCanvasOptions = {
                 errorCorrectionLevel,
                 margin: 2,
-                width: 300,
+                width: QR_CODE_SIZE,
                 color: {
                     dark: foregroundColor,
-                    light: backgroundColor,
+                    light: "rgba(0,0,0,0)", // Transparent light color for the QR code itself
                 },
             };
-            await QRCode.toCanvas(canvasRef.current, text, options);
-            ctx.drawImage(canvasRef.current, 0, 0);
+            await QRCode.toCanvas(qrCanvasRef.current, text, options);
+            ctx.drawImage(qrCanvasRef.current, QR_CODE_OFFSET, QR_CODE_OFFSET);
         } catch (err) {
             console.error("Failed to generate QR code:", err);
             // Optionally draw a placeholder or error message on the visible canvas
-            ctx.fillStyle = backgroundColor;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
-    } else {
-        // Draw background if no QR code
-        ctx.fillStyle = backgroundColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
 
@@ -157,7 +157,7 @@ export default function Home() {
       Math.abs(mouseY - textPosition.y) < fontSize / 2
     ) {
       setIsDragging(true);
-      setDragStart({ x: mouseX - textPosition.x, y: mouseY - textPosition.y });
+      setDragStart({ x: mouseX - textPosition.x, y: mouseY - dragStart.y });
     }
   };
 
@@ -326,12 +326,12 @@ export default function Home() {
 
             <div className="flex flex-col items-center justify-center gap-4">
               <div
-                className="relative flex aspect-square w-full max-w-[300px] items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner"
+                className="relative flex aspect-square w-full max-w-[400px] items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner"
               >
                 <canvas
                     ref={visibleCanvasRef}
-                    width={300}
-                    height={300}
+                    width={CANVAS_SIZE}
+                    height={CANVAS_SIZE}
                     className={cn("rounded-lg", isDragging && "cursor-grabbing")}
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
@@ -342,7 +342,7 @@ export default function Home() {
               </div>
               {overlayText && (
                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <Button variant="ghost" size="sm" onClick={() => setTextPosition({x:150, y:150})}>
+                    <Button variant="ghost" size="sm" onClick={() => setTextPosition({x:CANVAS_SIZE/2, y:CANVAS_SIZE/2})}>
                         <Move className="mr-2 h-4 w-4" /> Reset Position
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => setTextRotation(0)}>
@@ -382,7 +382,7 @@ export default function Home() {
           </Button>
         </CardFooter>
       </Card>
-      <canvas ref={canvasRef} width="300" height="300" style={{ display: "none" }} />
+      <canvas ref={qrCanvasRef} width={QR_CODE_SIZE} height={QR_CODE_SIZE} style={{ display: "none" }} />
     </main>
   );
 }
