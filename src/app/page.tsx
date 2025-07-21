@@ -244,7 +244,10 @@ export default function Home() {
     }
   };
 
-  const drawOverlay = (ctx: CanvasRenderingContext2D, overlay: TextOverlay) => {
+  const drawOverlay = (ctx: CanvasRenderingContext2D, overlay: TextOverlay, clear = false) => {
+      if (clear) {
+        ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      }
       ctx.save();
       
       if (overlay.shadow.enabled) {
@@ -305,34 +308,19 @@ export default function Home() {
     }
   }, [text, qrOptions, logo]);
 
-  // Combined canvas drawing logic
-  const drawFinalCanvas = useCallback(async () => {
+  const drawVisibleCanvas = useCallback(() => {
     const canvas = visibleCanvasRef.current;
     const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx || !qrCodeRef.current) return;
+    if (!canvas || !ctx) return;
 
-    // Get the QR code as a data URL from qr-code-styling
-    const qrDataUrl = await qrCodeRef.current.getDataUrl('png');
-    const qrImage = await new Promise<HTMLImageElement>(resolve => {
-        const img = new window.Image();
-        img.onload = () => resolve(img);
-        img.src = qrDataUrl;
-    });
-
-    // Clear canvas and draw QR code
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(qrImage, 0, 0, canvas.width, canvas.height);
-
-    // Draw all text overlays
-    overlays.forEach(overlay => {
-      drawOverlay(ctx, overlay);
-    });
+    overlays.forEach(overlay => drawOverlay(ctx, overlay));
   }, [overlays]);
 
+
   useEffect(() => {
-    const timeoutId = setTimeout(() => drawFinalCanvas(), 300);
-    return () => clearTimeout(timeoutId);
-  }, [drawFinalCanvas, overlays]);
+    drawVisibleCanvas();
+  }, [drawVisibleCanvas]);
 
 
   const getEventCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -354,36 +342,38 @@ export default function Home() {
   };
 
   const handleDragStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!activeOverlay) return;
-    
     const coords = getEventCoordinates(e);
     if (!coords) return;
-    
     const { x: mouseX, y: mouseY } = coords;
 
-    const ctx = visibleCanvasRef.current?.getContext('2d');
-    if (!ctx) return;
-    
-    ctx.font = `${activeOverlay.fontStyle} ${activeOverlay.fontWeight} ${activeOverlay.fontSize}px "${activeOverlay.fontFamily}"`;
-    const textWidth = ctx.measureText(activeOverlay.text).width;
-    
-    const hitBoxWidth = Math.max(textWidth, 44);
-    const hitBoxHeight = Math.max(activeOverlay.fontSize, 44);
+    // Find which overlay was clicked
+    const clickedOverlay = [...overlays].reverse().find(overlay => {
+        const ctx = visibleCanvasRef.current?.getContext('2d');
+        if (!ctx) return false;
+        
+        ctx.font = `${overlay.fontStyle} ${overlay.fontWeight} ${overlay.fontSize}px "${overlay.fontFamily}"`;
+        const textWidth = ctx.measureText(overlay.text).width;
+        
+        const hitBoxWidth = Math.max(textWidth, 44);
+        const hitBoxHeight = Math.max(overlay.fontSize, 44);
 
+        // Simple bounding box check (not rotated)
+        return (
+            Math.abs(mouseX - overlay.position.x) < hitBoxWidth / 2 &&
+            Math.abs(mouseY - overlay.position.y) < hitBoxHeight / 2
+        )
+    });
 
-    if (
-      Math.abs(mouseX - activeOverlay.position.x) < hitBoxWidth / 2 &&
-      Math.abs(mouseY - activeOverlay.position.y) < hitBoxHeight / 2
-    ) {
-      if ('preventDefault' in e) e.preventDefault();
-      setIsDragging(true);
-      setDragStart({ x: mouseX - activeOverlay.position.x, y: mouseY - activeOverlay.position.y });
-      
-      const dragCtx = dragCanvasRef.current?.getContext('2d');
-      if(dragCtx){
-          dragCtx.clearRect(0,0,CANVAS_SIZE, CANVAS_SIZE);
-          drawOverlay(dragCtx, activeOverlay);
-      }
+    if (clickedOverlay) {
+        if ('preventDefault' in e) e.preventDefault();
+        setActiveOverlayId(clickedOverlay.id);
+        setIsDragging(true);
+        setDragStart({ x: mouseX - clickedOverlay.position.x, y: mouseY - clickedOverlay.position.y });
+        
+        const dragCtx = dragCanvasRef.current?.getContext('2d');
+        if(dragCtx){
+            drawOverlay(dragCtx, clickedOverlay, true);
+        }
     }
   };
 
@@ -402,31 +392,29 @@ export default function Home() {
     
     const dragCtx = dragCanvasRef.current?.getContext('2d');
     if(dragCtx){
-        dragCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-        drawOverlay(dragCtx, {...activeOverlay, position: newPosition});
+        drawOverlay(dragCtx, {...activeOverlay, position: newPosition}, true);
     }
   };
 
   const handleDragEnd = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDragging || !activeOverlay) return;
-    setIsDragging(false);
-
-    const coords = getEventCoordinates(e as React.MouseEvent<HTMLCanvasElement>); // Touches might not be available on touchend
-     const newPosition = {
-        x: (coords?.x ?? activeOverlay.position.x + dragStart.x) - dragStart.x,
-        y: (coords?.y ?? activeOverlay.position.y + dragStart.y) - dragStart.y,
-    };
-
-    updateOverlay(activeOverlay.id, { position: newPosition });
     
     const dragCtx = dragCanvasRef.current?.getContext('2d');
+    const coords = getEventCoordinates(e as React.MouseEvent<HTMLCanvasElement>); // Touches might not be available on touchend
     if (dragCtx) {
-      dragCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        const newPosition = {
+            x: (coords?.x ?? activeOverlay.position.x + dragStart.x) - dragStart.x,
+            y: (coords?.y ?? activeOverlay.position.y + dragStart.y) - dragStart.y,
+        };
+        updateOverlay(activeOverlay.id, { position: newPosition });
+        dragCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     }
+    
+    setIsDragging(false);
   };
   
   const handleDownload = async () => {
-    if (!qrCodeRef.current || !visibleCanvasRef.current) return;
+    if (!qrCodeRef.current) return;
 
     // Use a temporary canvas to merge QR code and overlays for download
     const downloadCanvas = document.createElement('canvas');
@@ -434,8 +422,8 @@ export default function Home() {
     downloadCanvas.height = CANVAS_SIZE;
     const ctx = downloadCanvas.getContext('2d');
     if (!ctx) return;
-    
-    // Get the QR code image (without overlays)
+
+    // qr-code-styling doesn't expose the canvas directly, so we have to get the raw image data.
     const qrInstanceForDownload = new QRCodeStyling({
       ...qrOptions,
       data: text,
@@ -813,12 +801,12 @@ export default function Home() {
                 style={{touchAction: 'none'}}
               >
                  <div ref={qrWrapperRef} className="absolute inset-0" />
-                 {/* Visible canvas for overlay interaction */}
+                 {/* This canvas is for interaction and drawing non-active overlays */}
                  <canvas
                     ref={visibleCanvasRef}
                     width={CANVAS_SIZE}
                     height={CANVAS_SIZE}
-                    className="absolute top-0 left-0 rounded-lg w-full h-full opacity-0" // Kept for size and mouse events
+                    className="absolute top-0 left-0 rounded-lg w-full h-full"
                     onMouseDown={handleDragStart}
                     onTouchStart={handleDragStart}
                     onMouseMove={handleDragMove}
@@ -827,7 +815,7 @@ export default function Home() {
                     onMouseLeave={handleDragEnd}
                     onTouchEnd={handleDragEnd}
                  />
-                 {/* Dragging canvas for smooth feedback */}
+                 {/* This canvas is for showing the currently dragged overlay smoothly */}
                  <canvas
                     ref={dragCanvasRef}
                     width={CANVAS_SIZE}
