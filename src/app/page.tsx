@@ -107,7 +107,7 @@ export default function Home() {
                 width: QR_CODE_SIZE,
                 color: {
                     dark: foregroundColor,
-                    light: "rgba(0,0,0,0)", // Transparent light color for the QR code itself
+                    light: "#00000000", // Transparent light color for the QR code itself
                 },
             };
             await QRCode.toCanvas(qrCanvasRef.current, text, options);
