@@ -391,11 +391,15 @@ export default function Home() {
       ctx.restore();
   };
   
-  const drawFinalCanvas = async () => {
+  const drawAllLayers = async () => {
     const finalCtx = finalCanvasRef.current?.getContext("2d");
-    if (!finalCtx || !qrCodeRef.current) return;
+    const visibleCtx = canvasRef.current?.getContext("2d");
+
+    if (!finalCtx || !visibleCtx || !qrCodeRef.current) return;
     
+    // Clear both canvases
     finalCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    visibleCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     
     // Get the QR code as a data URL from qr-code-styling
     const qrDataUrl = await qrCodeRef.current.getRawData('png');
@@ -408,8 +412,14 @@ export default function Home() {
         img.src = url;
     });
 
+    // Draw QR code to both canvases
     finalCtx.drawImage(qrImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
-    overlays.forEach(o => drawOverlay(finalCtx, o));
+    
+    // Draw overlays to both canvases
+    overlays.forEach(o => {
+      drawOverlay(finalCtx, o);
+      drawOverlay(visibleCtx, o);
+    });
   };
   
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -529,7 +539,7 @@ export default function Home() {
       if (qrWrapperRef.current && qrCodeRef.current) {
           qrWrapperRef.current.innerHTML = '';
           qrCodeRef.current.append(qrWrapperRef.current);
-          timeoutId = setTimeout(drawFinalCanvas, 200);
+          timeoutId = setTimeout(drawAllLayers, 200);
       }
 
       return () => clearTimeout(timeoutId);
@@ -562,7 +572,7 @@ export default function Home() {
     if (clickedOverlay) {
         setActiveOverlayId(clickedOverlay.id);
         setIsDragging(true);
-        setDragStart({ x: mouseX - clickedOverlay.position.x, y: mouseY - dragStart.y });
+        setDragStart({ x: mouseX - clickedOverlay.position.x, y: mouseY - clickedOverlay.position.y });
     } else {
       setActiveOverlayId(null);
     }
@@ -589,7 +599,7 @@ export default function Home() {
   };
   
   const handleDownload = async () => {
-    await drawFinalCanvas();
+    await drawAllLayers();
     const finalCanvas = finalCanvasRef.current;
     if (!finalCanvas) return;
     
@@ -1336,5 +1346,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
