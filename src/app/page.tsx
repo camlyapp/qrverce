@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC, useCallback } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Minus, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +34,8 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Switch } from "@/components/ui/switch";
 
 const CANVAS_SIZE = 400;
 const QR_CODE_SIZE = 300;
@@ -75,8 +77,23 @@ interface TextOverlay {
   color: string;
   fontSize: number;
   fontFamily: string;
+  fontWeight: 'normal' | 'bold';
+  fontStyle: 'normal' | 'italic';
+  textAlign: 'left' | 'center' | 'right';
   rotation: number;
   position: { x: number; y: number };
+  stroke: {
+    enabled: boolean;
+    color: string;
+    width: number;
+  },
+  shadow: {
+    enabled: boolean;
+    color: string;
+    blur: number;
+    offsetX: number;
+    offsetY: number;
+  }
 }
 
 const colorPresets = [
@@ -133,6 +150,21 @@ export default function Home() {
   const updateOverlay = (id: number, updates: Partial<TextOverlay>) => {
       setOverlays(overlays.map(o => o.id === id ? { ...o, ...updates } : o));
   };
+
+  const updateNestedOverlay = (id: number, category: keyof TextOverlay, updates: any) => {
+    setOverlays(overlays.map(o => {
+        if (o.id === id) {
+            return {
+                ...o,
+                [category]: {
+                    ...(o[category] as any),
+                    ...updates
+                }
+            };
+        }
+        return o;
+    }));
+  };
   
   const addOverlay = () => {
     const newId = Date.now();
@@ -142,8 +174,23 @@ export default function Home() {
       color: "#000000",
       fontSize: 40,
       fontFamily: "Inter",
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'center',
       rotation: 0,
       position: { x: CANVAS_SIZE / 2, y: CANVAS_SIZE / 2 },
+      stroke: {
+        enabled: false,
+        color: '#ffffff',
+        width: 2,
+      },
+      shadow: {
+        enabled: false,
+        color: 'rgba(0,0,0,0.5)',
+        blur: 5,
+        offsetX: 5,
+        offsetY: 5,
+      }
     };
     setOverlays([...overlays, newOverlay]);
     setActiveOverlayId(newId);
@@ -188,13 +235,34 @@ export default function Home() {
     // Draw all overlays
     overlays.forEach(overlay => {
       ctx.save();
+      
+      // Shadow
+      if (overlay.shadow.enabled) {
+          ctx.shadowColor = overlay.shadow.color;
+          ctx.shadowBlur = overlay.shadow.blur;
+          ctx.shadowOffsetX = overlay.shadow.offsetX;
+          ctx.shadowOffsetY = overlay.shadow.offsetY;
+      }
+      
       ctx.translate(overlay.position.x, overlay.position.y);
       ctx.rotate((overlay.rotation * Math.PI) / 180);
-      ctx.fillStyle = overlay.color;
-      ctx.font = `${overlay.fontSize}px "${overlay.fontFamily}"`;
-      ctx.textAlign = "center";
+      
+      // Font and text properties
+      ctx.font = `${overlay.fontStyle} ${overlay.fontWeight} ${overlay.fontSize}px "${overlay.fontFamily}"`;
+      ctx.textAlign = overlay.textAlign;
       ctx.textBaseline = "middle";
+      
+      // Stroke
+      if (overlay.stroke.enabled) {
+          ctx.strokeStyle = overlay.stroke.color;
+          ctx.lineWidth = overlay.stroke.width;
+          ctx.strokeText(overlay.text, 0, 0);
+      }
+      
+      // Fill
+      ctx.fillStyle = overlay.color;
       ctx.fillText(overlay.text, 0, 0);
+
       ctx.restore();
     });
     
@@ -237,7 +305,7 @@ export default function Home() {
     const ctx = visibleCanvasRef.current?.getContext('2d');
     if (!ctx) return;
     
-    ctx.font = `${activeOverlay.fontSize}px "${activeOverlay.fontFamily}"`;
+    ctx.font = `${activeOverlay.fontStyle} ${activeOverlay.fontWeight} ${activeOverlay.fontSize}px "${activeOverlay.fontFamily}"`;
     const textWidth = ctx.measureText(activeOverlay.text).width;
     
     // A bit more generous hit area
@@ -319,7 +387,7 @@ export default function Home() {
                 />
               </div>
 
-              <Accordion type="multiple" defaultValue={['colors', 'text-overlay']} className="w-full">
+              <Accordion type="multiple" defaultValue={['colors']} className="w-full">
                 <AccordionItem value="colors">
                   <AccordionTrigger className="text-lg font-semibold">
                     <div className="flex items-center">
@@ -403,34 +471,125 @@ export default function Home() {
                                  <span className="sr-only">Delete overlay</span>
                              </Button>
                            </div>
-                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                             <ColorInput
-                               label="Text Color"
-                               value={activeOverlay.color}
-                               onChange={(e) => updateOverlay(activeOverlay.id, {color: e.target.value})}
-                             />
-                              <div className="grid gap-2">
-                                <Label>Font</Label>
-                                <Select value={activeOverlay.fontFamily} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontFamily: v})}>
-                                  <SelectTrigger><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Inter">Inter</SelectItem>
-                                    <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
-                                    <SelectItem value="Arial">Arial</SelectItem>
-                                    <SelectItem value="Courier New">Courier New</SelectItem>
-                                    <SelectItem value="Verdana">Verdana</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                           </div>
-                            <div className="grid gap-2">
-                               <Label>Font Size: {activeOverlay.fontSize}px</Label>
-                               <Slider value={[activeOverlay.fontSize]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0]})} min={10} max={80} step={1} />
-                           </div>
-                           <div className="grid gap-2">
-                               <Label>Rotation: {activeOverlay.rotation}°</Label>
-                               <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
-                           </div>
+                          
+                           <Accordion type="multiple" className="w-full -mx-3">
+                              <AccordionItem value="font-style" className="border-x-0 border-t-0 px-3">
+                                <AccordionTrigger className="py-2 text-base font-semibold">Font & Style</AccordionTrigger>
+                                <AccordionContent className="pt-2 space-y-4">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <ColorInput
+                                      label="Text Color"
+                                      value={activeOverlay.color}
+                                      onChange={(e) => updateOverlay(activeOverlay.id, {color: e.target.value})}
+                                    />
+                                    <div className="grid gap-2">
+                                      <Label>Font</Label>
+                                      <Select value={activeOverlay.fontFamily} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontFamily: v})}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="Inter">Inter</SelectItem>
+                                          <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
+                                          <SelectItem value="Arial">Arial</SelectItem>
+                                          <SelectItem value="Courier New">Courier New</SelectItem>
+                                          <SelectItem value="Verdana">Verdana</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                  <div className="grid gap-2">
+                                     <Label>Font Size: {activeOverlay.fontSize}px</Label>
+                                     <Slider value={[activeOverlay.fontSize]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0]})} min={10} max={80} step={1} />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4">
+                                      <div className="grid gap-2">
+                                        <Label>Style</Label>
+                                        <ToggleGroup type="multiple" value={[activeOverlay.fontWeight, activeOverlay.fontStyle].filter(s => s !== 'normal')} onValueChange={(value) => {
+                                          updateOverlay(activeOverlay.id, {
+                                            fontWeight: value.includes('bold') ? 'bold' : 'normal',
+                                            fontStyle: value.includes('italic') ? 'italic' : 'normal'
+                                          });
+                                        }}>
+                                          <ToggleGroupItem value="bold" aria-label="Toggle bold"><Bold className="h-4 w-4" /></ToggleGroupItem>
+                                          <ToggleGroupItem value="italic" aria-label="Toggle italic"><Italic className="h-4 w-4" /></ToggleGroupItem>
+                                        </ToggleGroup>
+                                      </div>
+                                      <div className="grid gap-2">
+                                        <Label>Alignment</Label>
+                                        <ToggleGroup type="single" value={activeOverlay.textAlign} onValueChange={(value: TextOverlay['textAlign']) => value && updateOverlay(activeOverlay.id, {textAlign: value})}>
+                                          <ToggleGroupItem value="left" aria-label="Align left"><AlignLeft className="h-4 w-4" /></ToggleGroupItem>
+                                          <ToggleGroupItem value="center" aria-label="Align center"><AlignCenter className="h-4 w-4" /></ToggleGroupItem>
+                                          <ToggleGroupItem value="right" aria-label="Align right"><AlignRight className="h-4 w-4" /></ToggleGroupItem>
+                                        </ToggleGroup>
+                                      </div>
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                              <AccordionItem value="position" className="border-x-0 px-3">
+                                  <AccordionTrigger className="py-2 text-base font-semibold">Position & Rotation</AccordionTrigger>
+                                  <AccordionContent className="pt-2 space-y-4">
+                                    <div className="grid gap-2">
+                                        <Label>Rotation: {activeOverlay.rotation}°</Label>
+                                        <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
+                                    </div>
+                                  </AccordionContent>
+                              </AccordionItem>
+                              <AccordionItem value="effects" className="border-x-0 border-b-0 px-3">
+                                  <AccordionTrigger className="py-2 text-base font-semibold">Effects</AccordionTrigger>
+                                  <AccordionContent className="pt-2 space-y-4">
+                                    {/* Stroke */}
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <Label htmlFor="stroke-enabled" className="font-medium">Text Outline</Label>
+                                        <Switch id="stroke-enabled" checked={activeOverlay.stroke.enabled} onCheckedChange={(c) => updateNestedOverlay(activeOverlay.id, 'stroke', { enabled: c })}/>
+                                      </div>
+                                      {activeOverlay.stroke.enabled && (
+                                          <div className="grid grid-cols-2 gap-4 pl-2 border-l-2 ml-2">
+                                              <ColorInput
+                                                  label="Outline Color"
+                                                  value={activeOverlay.stroke.color}
+                                                  onChange={(e) => updateNestedOverlay(activeOverlay.id, 'stroke', { color: e.target.value })}
+                                              />
+                                              <div className="grid gap-2">
+                                                  <Label>Outline Width</Label>
+                                                  <Slider value={[activeOverlay.stroke.width]} onValueChange={(v) => updateNestedOverlay(activeOverlay.id, 'stroke', { width: v[0] })} min={1} max={10} step={0.5} />
+                                              </div>
+                                          </div>
+                                      )}
+                                    </div>
+                                    <Separator/>
+                                    {/* Shadow */}
+                                     <div className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <Label htmlFor="shadow-enabled" className="font-medium">Text Shadow</Label>
+                                        <Switch id="shadow-enabled" checked={activeOverlay.shadow.enabled} onCheckedChange={(c) => updateNestedOverlay(activeOverlay.id, 'shadow', { enabled: c })}/>
+                                      </div>
+                                      {activeOverlay.shadow.enabled && (
+                                          <div className="space-y-4 pl-2 border-l-2 ml-2">
+                                              <ColorInput
+                                                  label="Shadow Color"
+                                                  value={activeOverlay.shadow.color}
+                                                  onChange={(e) => updateNestedOverlay(activeOverlay.id, 'shadow', { color: e.target.value })}
+                                              />
+                                              <div className="grid gap-2">
+                                                  <Label>Blur: {activeOverlay.shadow.blur}px</Label>
+                                                  <Slider value={[activeOverlay.shadow.blur]} onValueChange={(v) => updateNestedOverlay(activeOverlay.id, 'shadow', { blur: v[0] })} min={0} max={20} step={1} />
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid gap-2">
+                                                    <Label>Offset X: {activeOverlay.shadow.offsetX}px</Label>
+                                                    <Slider value={[activeOverlay.shadow.offsetX]} onValueChange={(v) => updateNestedOverlay(activeOverlay.id, 'shadow', { offsetX: v[0] })} min={-20} max={20} step={1} />
+                                                </div>
+                                                 <div className="grid gap-2">
+                                                    <Label>Offset Y: {activeOverlay.shadow.offsetY}px</Label>
+                                                    <Slider value={[activeOverlay.shadow.offsetY]} onValueChange={(v) => updateNestedOverlay(activeOverlay.id, 'shadow', { offsetY: v[0] })} min={-20} max={20} step={1} />
+                                                </div>
+                                              </div>
+                                          </div>
+                                      )}
+                                    </div>
+                                  </AccordionContent>
+                              </AccordionItem>
+                           </Accordion>
                        </div>
                      ) : (
                         <div className="text-center text-muted-foreground p-4 border-t">
@@ -483,7 +642,7 @@ export default function Home() {
                     ref={visibleCanvasRef}
                     width={CANVAS_SIZE}
                     height={CANVAS_SIZE}
-                    className={cn("rounded-lg w-full h-full", isDragging && "cursor-grabbing")}
+                    className={cn("rounded-lg w-full h-full", isDragging ? "cursor-grabbing" : "cursor-move")}
                     onMouseDown={handleDragStart}
                     onMouseMove={handleDragMove}
                     onMouseUp={handleDragEnd}
@@ -540,3 +699,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
