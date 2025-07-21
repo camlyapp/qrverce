@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC, useCallback } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension, type Gradient } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, ImageIcon, Sparkles, Wand2 } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Sparkles, Contact } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +37,7 @@ import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
 const CANVAS_SIZE = 400;
 
@@ -217,10 +218,41 @@ const getGradient = (options: ColorOptions): Gradient | undefined => {
     return undefined;
 };
 
+const vCardInitialState = {
+  firstName: '',
+  lastName: '',
+  phone: '',
+  email: '',
+  company: '',
+  jobTitle: '',
+  website: '',
+  address: ''
+};
+
+const generateVCardString = (vCardData: typeof vCardInitialState): string => {
+  const parts = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    `N:${vCardData.lastName};${vCardData.firstName};;;`,
+    `FN:${vCardData.firstName} ${vCardData.lastName}`,
+    vCardData.phone ? `TEL;TYPE=CELL:${vCardData.phone}` : '',
+    vCardData.email ? `EMAIL:${vCardData.email}` : '',
+    vCardData.company ? `ORG:${vCardData.company}` : '',
+    vCardData.jobTitle ? `TITLE:${vCardData.jobTitle}` : '',
+    vCardData.website ? `URL:${vCardData.website}` : '',
+    vCardData.address ? `ADR;TYPE=HOME:;;${vCardData.address.replace(/\n/g, ';')}` : '',
+    'END:VCARD'
+  ];
+  return parts.filter(Boolean).join('\n');
+};
 
 export default function Home() {
-  const [text, setText] = useState("https://firebase.google.com/");
+  const [qrContent, setQrContent] = useState("https://firebase.google.com/");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
+  
+  const [activeTab, setActiveTab] = useState('text');
+  const [vCardData, setVCardData] = useState(vCardInitialState);
+  const [textData, setTextData] = useState("https://firebase.google.com/");
 
   // QR Styling State
   const [qrOptions, setQrOptions] = useState<QRCodeStylingOptions>({
@@ -380,55 +412,69 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    const newContent = activeTab === 'vcard' ? generateVCardString(vCardData) : textData;
+    setQrContent(newContent);
+  }, [activeTab, vCardData, textData]);
+
 
   useEffect(() => {
-    const dotsOptions: QRCodeStylingOptions['dotsOptions'] = { ...qrOptions.dotsOptions };
+    const dotsOptions: Partial<QRCodeStylingOptions['dotsOptions']> = { ...qrOptions.dotsOptions };
     if (dotsColor.type === 'solid') {
+      delete dotsOptions.gradient;
       dotsOptions.color = dotsColor.solid;
     } else {
+      delete dotsOptions.color;
       dotsOptions.gradient = getGradient(dotsColor);
     }
 
-    const backgroundOptions: QRCodeStylingOptions['backgroundOptions'] = { ...qrOptions.backgroundOptions };
+    const backgroundOptions: Partial<QRCodeStylingOptions['backgroundOptions']> = { ...qrOptions.backgroundOptions };
     if (bgColor.type === 'solid') {
+      delete backgroundOptions.gradient;
       backgroundOptions.color = bgColor.solid;
     } else {
+      delete backgroundOptions.color;
       backgroundOptions.gradient = getGradient(bgColor);
     }
     
-    const cornersSquareOptions: QRCodeStylingOptions['cornersSquareOptions'] = { ...qrOptions.cornersSquareOptions };
+    const cornersSquareOptions: Partial<QRCodeStylingOptions['cornersSquareOptions']> = { ...qrOptions.cornersSquareOptions };
     if (dotsColor.type === 'solid') {
+      delete cornersSquareOptions.gradient;
       cornersSquareOptions.color = dotsColor.solid;
     } else {
+      delete cornersSquareOptions.color;
       cornersSquareOptions.gradient = getGradient(dotsColor);
     }
     
-    const cornersDotOptions: QRCodeStylingOptions['cornersDotOptions'] = { ...qrOptions.cornersDotOptions };
+    const cornersDotOptions: Partial<QRCodeStylingOptions['cornersDotOptions']> = { ...qrOptions.cornersDotOptions };
     if (dotsColor.type === 'solid') {
+      delete cornersDotOptions.gradient;
       cornersDotOptions.color = dotsColor.solid;
     } else {
+      delete cornersDotOptions.color;
       cornersDotOptions.gradient = getGradient(dotsColor);
     }
 
     const finalQrOptions: QRCodeStylingOptions = {
       ...qrOptions,
-      dotsOptions,
-      backgroundOptions,
-      cornersSquareOptions,
-      cornersDotOptions,
-      data: text,
+      dotsOptions: dotsOptions as QRCodeStylingOptions['dotsOptions'],
+      backgroundOptions: backgroundOptions as QRCodeStylingOptions['backgroundOptions'],
+      cornersSquareOptions: cornersSquareOptions as QRCodeStylingOptions['cornersSquareOptions'],
+      cornersDotOptions: cornersDotOptions as QRCodeStylingOptions['cornersDotOptions'],
+      data: qrContent,
       image: logo ?? undefined,
     };
 
     if (!qrCodeRef.current) {
       qrCodeRef.current = new QRCodeStyling(finalQrOptions);
       if (qrWrapperRef.current) {
+        qrWrapperRef.current.innerHTML = '';
         qrCodeRef.current.append(qrWrapperRef.current);
       }
     } else {
       qrCodeRef.current.update(finalQrOptions);
     }
-  }, [text, qrOptions, logo, dotsColor, bgColor]);
+  }, [qrContent, qrOptions, logo, dotsColor, bgColor]);
 
   const drawVisibleCanvas = useCallback(() => {
     const canvas = visibleCanvasRef.current;
@@ -441,7 +487,7 @@ export default function Home() {
         drawOverlay(ctx, overlay);
       }
     });
-  }, [overlays, isDragging, activeOverlayId]);
+  }, [overlays, isDragging, activeOverlayId, drawOverlay]);
 
 
   useEffect(() => {
@@ -515,16 +561,19 @@ export default function Home() {
     if (!isDragging || !activeOverlay) return;
     if ('preventDefault' in e) e.preventDefault();
     
+    const dragCanvas = dragCanvasRef.current;
+    if (!dragCanvas) return;
+
     const coords = getEventCoordinates(e);
     if (!coords) return;
     const { x: mouseX, y: mouseY } = coords;
 
     const newPosition = {
-        x: mouseX - dragStart.x,
-        y: mouseY - dragStart.y,
+      x: mouseX - dragStart.x,
+      y: mouseY - dragStart.y,
     };
     
-    const dragCtx = dragCanvasRef.current?.getContext('2d');
+    const dragCtx = dragCanvas.getContext('2d');
     if(dragCtx){
         drawOverlay(dragCtx, {...activeOverlay, position: newPosition}, true);
     }
@@ -544,25 +593,9 @@ export default function Home() {
         y: coords.y - dragStart.y,
       };
     } else {
-        const lastKnownPosition = {
-            x: (dragCanvasRef.current?.getBoundingClientRect().x || 0) - dragStart.x,
-            y: (dragCanvasRef.current?.getBoundingClientRect().y || 0) - dragStart.y,
-        };
-
         const activeOverlayCurrent = overlays.find(o => o.id === activeOverlayId);
         if(activeOverlayCurrent) {
-            const dragCanvas = dragCanvasRef.current;
-            if (dragCanvas && dragCanvas.style.transform) {
-                const transform = dragCanvas.style.transform;
-                const match = transform.match(/translate\((.*?)px, (.*?)px\)/);
-                 if (match) {
-                    finalPosition = { x: parseFloat(match[1]) + activeOverlayCurrent.position.x, y: parseFloat(match[2]) + activeOverlayCurrent.position.y };
-                 } else {
-                    finalPosition = activeOverlayCurrent.position;
-                 }
-            } else {
-                finalPosition = activeOverlayCurrent.position
-            }
+            finalPosition = activeOverlayCurrent.position;
         }
     }
 
@@ -587,12 +620,15 @@ export default function Home() {
     const ctx = downloadCanvas.getContext('2d');
     if (!ctx) return;
     
-    const qrDataUrl = await qrCodeRef.current.getDataUrl(downloadFormat);
+    const qrDataUrl = await qrCodeRef.current.getRawData(downloadFormat);
+    if (!qrDataUrl) return;
+
     const qrImage = await new Promise<HTMLImageElement>(resolve => {
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
-        img.src = qrDataUrl;
+        const url = URL.createObjectURL(qrDataUrl as Blob);
+        img.src = url;
     });
 
     ctx.drawImage(qrImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
@@ -614,6 +650,11 @@ export default function Home() {
     setBgColor({type: 'solid', solid: bg, gradient: initialBgColorOptions.gradient});
   };
 
+  const handleVCardChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setVCardData(prev => ({ ...prev, [name]: value }));
+  };
+
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-6 md:p-8">
       <Card className="w-full max-w-5xl overflow-hidden rounded-xl shadow-2xl">
@@ -628,17 +669,68 @@ export default function Home() {
         <CardContent className="p-4 md:p-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-8">
             <div className="flex flex-col gap-6 lg:col-span-2">
-              <div className="grid gap-2">
-                <Label htmlFor="text-input" className="font-medium">
-                  URL or Text to Encode
-                </Label>
-                <Input
-                  id="text-input"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="e.g., https://example.com"
-                />
-              </div>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="text">
+                    <Type className="mr-2 h-4 w-4"/>
+                    URL / Text
+                  </TabsTrigger>
+                  <TabsTrigger value="vcard">
+                    <Contact className="mr-2 h-4 w-4"/>
+                    vCard
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="text" className="pt-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="text-input" className="font-medium">
+                        URL or Text to Encode
+                      </Label>
+                      <Input
+                        id="text-input"
+                        value={textData}
+                        onChange={(e) => setTextData(e.target.value)}
+                        placeholder="e.g., https://example.com"
+                      />
+                    </div>
+                </TabsContent>
+                <TabsContent value="vcard" className="pt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="vcard-firstName">First Name</Label>
+                      <Input id="vcard-firstName" name="firstName" value={vCardData.firstName} onChange={handleVCardChange} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="vcard-lastName">Last Name</Label>
+                      <Input id="vcard-lastName" name="lastName" value={vCardData.lastName} onChange={handleVCardChange} />
+                    </div>
+                     <div className="grid gap-2">
+                      <Label htmlFor="vcard-phone">Phone</Label>
+                      <Input id="vcard-phone" name="phone" type="tel" value={vCardData.phone} onChange={handleVCardChange} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="vcard-email">Email</Label>
+                      <Input id="vcard-email" name="email" type="email" value={vCardData.email} onChange={handleVCardChange} />
+                    </div>
+                     <div className="grid gap-2">
+                      <Label htmlFor="vcard-company">Company</Label>
+                      <Input id="vcard-company" name="company" value={vCardData.company} onChange={handleVCardChange} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="vcard-jobTitle">Job Title</Label>
+                      <Input id="vcard-jobTitle" name="jobTitle" value={vCardData.jobTitle} onChange={handleVCardChange} />
+                    </div>
+                    <div className="sm:col-span-2 grid gap-2">
+                      <Label htmlFor="vcard-website">Website</Label>
+                      <Input id="vcard-website" name="website" type="url" value={vCardData.website} onChange={handleVCardChange} />
+                    </div>
+                    <div className="sm:col-span-2 grid gap-2">
+                      <Label htmlFor="vcard-address">Address</Label>
+                      <Textarea id="vcard-address" name="address" value={vCardData.address} onChange={handleVCardChange} />
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
 
               <Accordion type="multiple" defaultValue={['style']} className="w-full">
                 <AccordionItem value="style">
@@ -713,7 +805,7 @@ export default function Home() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pt-4 space-y-4">
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <ColorPicker label="Foreground" options={dotsColor} onChange={setDotsColor} />
                         <ColorPicker label="Background" options={bgColor} onChange={setBgColor} />
                     </div>
@@ -1032,3 +1124,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
