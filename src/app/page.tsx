@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
+import { Separator } from "@/components/ui/separator";
 
 const CANVAS_SIZE = 400;
 const QR_CODE_SIZE = 300;
@@ -76,6 +77,17 @@ interface TextOverlay {
   rotation: number;
   position: { x: number; y: number };
 }
+
+const colorPresets = [
+    { name: 'Classic', fg: '#000000', bg: '#ffffff' },
+    { name: 'Inverted', fg: '#ffffff', bg: '#000000' },
+    { name: 'Ocean', fg: '#023047', bg: '#8ecae6' },
+    { name: 'Sunset', fg: '#d90429', bg: '#ffc300' },
+    { name: 'Forest', fg: '#283618', bg: '#a3b18a' },
+    { name: 'Royal', fg: '#f0e68c', bg: '#4b0082' },
+    { name: 'Mint', fg: '#004d40', bg: '#b2dfdb' },
+    { name: 'Rose', fg: '#831843', bg: '#fecdd3' },
+];
 
 export default function Home() {
   const [text, setText] = useState("https://firebase.google.com/");
@@ -254,6 +266,11 @@ export default function Home() {
     link.click();
     document.body.removeChild(link);
   };
+  
+  const handlePresetClick = (fg: string, bg: string) => {
+    setForegroundColor(fg);
+    setBackgroundColor(bg);
+  };
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-6 md:p-8">
@@ -302,6 +319,26 @@ export default function Home() {
                         onChange={(e) => setBackgroundColor(e.target.value)}
                       />
                     </div>
+                     <Separator className="my-4" />
+                      <div className="grid gap-3">
+                        <Label>Color Presets</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                            {colorPresets.map((preset) => (
+                                <button
+                                    key={preset.name}
+                                    title={preset.name}
+                                    onClick={() => handlePresetClick(preset.fg, preset.bg)}
+                                    className="flex flex-col items-center justify-center gap-1.5 rounded-md border p-2 transition-all hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring"
+                                >
+                                    <div className="flex -space-x-2">
+                                        <div className="h-6 w-6 rounded-full border-2 border-white dark:border-black" style={{ backgroundColor: preset.fg }} />
+                                        <div className="h-6 w-6 rounded-full border-2 border-white dark:border-black" style={{ backgroundColor: preset.bg }} />
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">{preset.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                      </div>
                   </AccordionContent>
                 </AccordionItem>
                 
@@ -479,5 +516,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
