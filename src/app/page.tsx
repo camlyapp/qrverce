@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC, useCallback } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension, type Gradient } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Image as ImageIcon, Sparkles, Wand2 } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, ImageIcon, Sparkles, Wand2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -232,18 +232,13 @@ export default function Home() {
       },
       dotsOptions: {
           type: 'square',
-          color: '#000000',
       },
-      backgroundOptions: {
-          color: '#ffffff',
-      },
+      backgroundOptions: {},
       cornersSquareOptions: {
           type: 'square',
-          color: '#000000',
       },
       cornersDotOptions: {
           type: 'square',
-          color: '#000000',
       },
       imageOptions: {
           crossOrigin: 'anonymous',
@@ -387,39 +382,51 @@ export default function Home() {
 
 
   useEffect(() => {
-    const finalQrOptions = {
-        ...qrOptions,
-        dotsOptions: {
-            ...qrOptions.dotsOptions,
-            color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
-            gradient: getGradient(dotsColor),
-        },
-        backgroundOptions: {
-            ...qrOptions.backgroundOptions,
-            color: bgColor.type === 'solid' ? bgColor.solid : undefined,
-            gradient: getGradient(bgColor),
-        },
-        cornersSquareOptions: {
-            ...qrOptions.cornersSquareOptions,
-            color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
-            gradient: getGradient(dotsColor),
-        },
-        cornersDotOptions: {
-            ...qrOptions.cornersDotOptions,
-            color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
-            gradient: getGradient(dotsColor),
-        },
-        data: text,
-        image: logo ?? undefined,
+    const dotsOptions: QRCodeStylingOptions['dotsOptions'] = { ...qrOptions.dotsOptions };
+    if (dotsColor.type === 'solid') {
+      dotsOptions.color = dotsColor.solid;
+    } else {
+      dotsOptions.gradient = getGradient(dotsColor);
+    }
+
+    const backgroundOptions: QRCodeStylingOptions['backgroundOptions'] = { ...qrOptions.backgroundOptions };
+    if (bgColor.type === 'solid') {
+      backgroundOptions.color = bgColor.solid;
+    } else {
+      backgroundOptions.gradient = getGradient(bgColor);
+    }
+    
+    const cornersSquareOptions: QRCodeStylingOptions['cornersSquareOptions'] = { ...qrOptions.cornersSquareOptions };
+    if (dotsColor.type === 'solid') {
+      cornersSquareOptions.color = dotsColor.solid;
+    } else {
+      cornersSquareOptions.gradient = getGradient(dotsColor);
+    }
+    
+    const cornersDotOptions: QRCodeStylingOptions['cornersDotOptions'] = { ...qrOptions.cornersDotOptions };
+    if (dotsColor.type === 'solid') {
+      cornersDotOptions.color = dotsColor.solid;
+    } else {
+      cornersDotOptions.gradient = getGradient(dotsColor);
+    }
+
+    const finalQrOptions: QRCodeStylingOptions = {
+      ...qrOptions,
+      dotsOptions,
+      backgroundOptions,
+      cornersSquareOptions,
+      cornersDotOptions,
+      data: text,
+      image: logo ?? undefined,
     };
 
     if (!qrCodeRef.current) {
-        qrCodeRef.current = new QRCodeStyling(finalQrOptions);
-        if (qrWrapperRef.current) {
-            qrCodeRef.current.append(qrWrapperRef.current);
-        }
+      qrCodeRef.current = new QRCodeStyling(finalQrOptions);
+      if (qrWrapperRef.current) {
+        qrCodeRef.current.append(qrWrapperRef.current);
+      }
     } else {
-        qrCodeRef.current.update(finalQrOptions);
+      qrCodeRef.current.update(finalQrOptions);
     }
   }, [text, qrOptions, logo, dotsColor, bgColor]);
 
@@ -429,8 +436,12 @@ export default function Home() {
     if (!canvas || !ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    overlays.forEach(overlay => drawOverlay(ctx, overlay));
-  }, [overlays]);
+    overlays.forEach(overlay => {
+      if (!isDragging || overlay.id !== activeOverlayId) {
+        drawOverlay(ctx, overlay);
+      }
+    });
+  }, [overlays, isDragging, activeOverlayId]);
 
 
   useEffect(() => {
@@ -461,9 +472,8 @@ export default function Home() {
     if (!coords) return;
     const { x: mouseX, y: mouseY } = coords;
 
-    // Find which overlay was clicked
     const clickedOverlay = [...overlays].reverse().find(overlay => {
-        const ctx = visibleCanvasRef.current?.getContext('2d');
+        const ctx = document.createElement('canvas').getContext('2d');
         if (!ctx) return false;
         
         ctx.save();
@@ -479,7 +489,6 @@ export default function Home() {
         const hitBoxHeight = Math.max(overlay.fontSize, 44);
         
         // This is a simplified hit-detection that doesn't account for rotation.
-        // For a more accurate solution, one would need to use rotated bounding box logic.
         return (
             Math.abs(mouseX - overlay.position.x) < hitBoxWidth / 2 &&
             Math.abs(mouseY - overlay.position.y) < hitBoxHeight / 2
@@ -493,8 +502,11 @@ export default function Home() {
         setDragStart({ x: mouseX - clickedOverlay.position.x, y: mouseY - clickedOverlay.position.y });
         
         const dragCtx = dragCanvasRef.current?.getContext('2d');
-        if(dragCtx){
+        const visibleCtx = visibleCanvasRef.current?.getContext('2d');
+        if(dragCtx && visibleCtx) {
             drawOverlay(dragCtx, clickedOverlay, true);
+            visibleCtx.clearRect(0,0,CANVAS_SIZE, CANVAS_SIZE);
+            drawVisibleCanvas();
         }
     }
   };
@@ -523,29 +535,37 @@ export default function Home() {
     
     const dragCtx = dragCanvasRef.current?.getContext('2d');
     
-    // We need to calculate the final position as the mouse/touch might have moved.
     let finalPosition;
     const coords = getEventCoordinates(e as React.MouseEvent<HTMLCanvasElement>);
-    
-    // For touch end, coordinates might not be available, so we peek into the state being updated during move
+
     if(coords) {
       finalPosition = {
         x: coords.x - dragStart.x,
         y: coords.y - dragStart.y,
       };
     } else {
-      const dragCanvas = dragCanvasRef.current;
-      if (dragCanvas) {
-         // This is a bit of a hack: if we don't have end coordinates, we assume the last drawn position on drag canvas is what we want.
-         // This is complex to get right, so we'll re-calculate from the active overlay's current (pre-update) position.
-         // A more robust implementation would use a state update during the move, but this prevents jumpiness on touch end.
-         const lastOverlay = overlays.find(o => o.id === activeOverlayId);
-         if (lastOverlay) {
-           // We can't get coords from touchend, so we cannot calculate the final position accurately.
-           // The state update will have to happen in handleDragMove.
-           // To avoid a jump, we'll just commit the last known position from the active overlay.
-         }
+        const lastKnownPosition = {
+            x: (dragCanvasRef.current?.getBoundingClientRect().x || 0) - dragStart.x,
+            y: (dragCanvasRef.current?.getBoundingClientRect().y || 0) - dragStart.y,
+        };
+
+        const activeOverlayCurrent = overlays.find(o => o.id === activeOverlayId);
+        if(activeOverlayCurrent) {
+            const dragCanvas = dragCanvasRef.current;
+            if (dragCanvas && dragCanvas.style.transform) {
+                const transform = dragCanvas.style.transform;
+                const match = transform.match(/translate\((.*?)px, (.*?)px\)/);
+                 if (match) {
+                    finalPosition = { x: parseFloat(match[1]) + activeOverlayCurrent.position.x, y: parseFloat(match[2]) + activeOverlayCurrent.position.y };
+                 } else {
+                    finalPosition = activeOverlayCurrent.position;
+                 }
+            } else {
+                finalPosition = activeOverlayCurrent.position
+            }
+        }
     }
+
 
     if (activeOverlay && finalPosition) {
         updateOverlay(activeOverlay.id, { position: finalPosition });
@@ -561,49 +581,20 @@ export default function Home() {
   const handleDownload = async () => {
     if (!qrCodeRef.current) return;
 
-    // Use a temporary canvas to merge QR code and overlays for download
     const downloadCanvas = document.createElement('canvas');
     downloadCanvas.width = CANVAS_SIZE;
     downloadCanvas.height = CANVAS_SIZE;
     const ctx = downloadCanvas.getContext('2d');
     if (!ctx) return;
-
-    // qr-code-styling doesn't expose the canvas directly, so we have to get the raw image data.
-     const finalQrOptions = {
-      ...qrOptions,
-      dotsOptions: {
-          ...qrOptions.dotsOptions,
-          color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
-          gradient: getGradient(dotsColor),
-      },
-      backgroundOptions: {
-          ...qrOptions.backgroundOptions,
-          color: bgColor.type === 'solid' ? bgColor.solid : undefined,
-          gradient: getGradient(bgColor),
-      },
-      cornersSquareOptions: {
-          ...qrOptions.cornersSquareOptions,
-          color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
-          gradient: getGradient(dotsColor),
-      },
-      cornersDotOptions: {
-          ...qrOptions.cornersDotOptions,
-          color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
-          gradient: getGradient(dotsColor),
-      },
-      data: text,
-      image: logo ?? undefined,
-    };
-
-    const qrInstanceForDownload = new QRCodeStyling(finalQrOptions);
-    const qrDataUrl = await qrInstanceForDownload.getDataUrl('png');
+    
+    const qrDataUrl = await qrCodeRef.current.getDataUrl(downloadFormat);
     const qrImage = await new Promise<HTMLImageElement>(resolve => {
         const img = new window.Image();
+        img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
         img.src = qrDataUrl;
     });
 
-    // Draw QR code and overlays
     ctx.drawImage(qrImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
     overlays.forEach(o => drawOverlay(ctx, o));
 
