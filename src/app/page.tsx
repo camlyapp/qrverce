@@ -144,6 +144,7 @@ export default function Home() {
 
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   const visibleCanvasRef = useRef<HTMLCanvasElement>(null);
+  const dragCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const activeOverlay = overlays.find(o => o.id === activeOverlayId);
   
@@ -203,40 +204,9 @@ export default function Home() {
     }
   };
 
-
-  const drawCanvas = useCallback(async () => {
-    const canvas = visibleCanvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-
-    // Clear canvas with background color
-    ctx.fillStyle = backgroundColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw QR Code from hidden canvas if text is valid
-    if (text.trim() && qrCanvasRef.current) {
-        try {
-            const options: QRCode.QRCodeToCanvasOptions = {
-                errorCorrectionLevel,
-                margin: 2,
-                width: QR_CODE_SIZE,
-                color: {
-                    dark: foregroundColor,
-                    light: "#00000000", // Transparent light color for the QR code itself
-                },
-            };
-            await QRCode.toCanvas(qrCanvasRef.current, text, options);
-            ctx.drawImage(qrCanvasRef.current, QR_CODE_OFFSET, QR_CODE_OFFSET);
-        } catch (err) {
-            console.error("Failed to generate QR code:", err);
-        }
-    }
-
-    // Draw all overlays
-    overlays.forEach(overlay => {
+  const drawOverlay = (ctx: CanvasRenderingContext2D, overlay: TextOverlay) => {
       ctx.save();
       
-      // Shadow
       if (overlay.shadow.enabled) {
           ctx.shadowColor = overlay.shadow.color;
           ctx.shadowBlur = overlay.shadow.blur;
@@ -247,31 +217,59 @@ export default function Home() {
       ctx.translate(overlay.position.x, overlay.position.y);
       ctx.rotate((overlay.rotation * Math.PI) / 180);
       
-      // Font and text properties
       ctx.font = `${overlay.fontStyle} ${overlay.fontWeight} ${overlay.fontSize}px "${overlay.fontFamily}"`;
       ctx.textAlign = overlay.textAlign;
       ctx.textBaseline = "middle";
       
-      // Stroke
       if (overlay.stroke.enabled) {
           ctx.strokeStyle = overlay.stroke.color;
           ctx.lineWidth = overlay.stroke.width;
           ctx.strokeText(overlay.text, 0, 0);
       }
       
-      // Fill
       ctx.fillStyle = overlay.color;
       ctx.fillText(overlay.text, 0, 0);
 
       ctx.restore();
+  };
+
+  const drawCanvas = useCallback(async (excludeActive = false) => {
+    const canvas = visibleCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    if (text.trim() && qrCanvasRef.current) {
+        try {
+            const options: QRCode.QRCodeToCanvasOptions = {
+                errorCorrectionLevel,
+                margin: 2,
+                width: QR_CODE_SIZE,
+                color: {
+                    dark: foregroundColor,
+                    light: "#00000000",
+                },
+            };
+            await QRCode.toCanvas(qrCanvasRef.current, text, options);
+            ctx.drawImage(qrCanvasRef.current, QR_CODE_OFFSET, QR_CODE_OFFSET);
+        } catch (err) {
+            console.error("Failed to generate QR code:", err);
+        }
+    }
+
+    overlays.forEach(overlay => {
+      if (excludeActive && overlay.id === activeOverlayId) return;
+      drawOverlay(ctx, overlay);
     });
     
     setQrCodeDataUrl(canvas.toDataURL("image/png"));
 
-  }, [text, foregroundColor, backgroundColor, errorCorrectionLevel, overlays]);
+  }, [text, foregroundColor, backgroundColor, errorCorrectionLevel, overlays, activeOverlayId]);
 
   useEffect(() => {
-    const timeoutId = setTimeout(drawCanvas, 300);
+    const timeoutId = setTimeout(() => drawCanvas(), 300);
     return () => clearTimeout(timeoutId);
   }, [drawCanvas]);
 
@@ -308,7 +306,6 @@ export default function Home() {
     ctx.font = `${activeOverlay.fontStyle} ${activeOverlay.fontWeight} ${activeOverlay.fontSize}px "${activeOverlay.fontFamily}"`;
     const textWidth = ctx.measureText(activeOverlay.text).width;
     
-    // A bit more generous hit area
     const hitBoxWidth = Math.max(textWidth, 44);
     const hitBoxHeight = Math.max(activeOverlay.fontSize, 44);
 
@@ -320,6 +317,13 @@ export default function Home() {
       if ('preventDefault' in e) e.preventDefault();
       setIsDragging(true);
       setDragStart({ x: mouseX - activeOverlay.position.x, y: mouseY - activeOverlay.position.y });
+      drawCanvas(true); // Redraw background without the active overlay
+
+      const dragCtx = dragCanvasRef.current?.getContext('2d');
+      if(dragCtx){
+          dragCtx.clearRect(0,0,CANVAS_SIZE, CANVAS_SIZE);
+          drawOverlay(dragCtx, activeOverlay);
+      }
     }
   };
 
@@ -330,17 +334,42 @@ export default function Home() {
     const coords = getEventCoordinates(e);
     if (!coords) return;
     const { x: mouseX, y: mouseY } = coords;
+
+    const newPosition = {
+        x: mouseX - dragStart.x,
+        y: mouseY - dragStart.y,
+    };
     
-    updateOverlay(activeOverlay.id, {
-        position: {
-            x: mouseX - dragStart.x,
-            y: mouseY - dragStart.y,
-        }
-    });
+    const dragCtx = dragCanvasRef.current?.getContext('2d');
+    if(dragCtx){
+        dragCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        drawOverlay(dragCtx, {...activeOverlay, position: newPosition});
+    }
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !activeOverlay) return;
     setIsDragging(false);
+
+    const coords = getEventCoordinates(e as React.MouseEvent<HTMLCanvasElement>); // Touches might not be available on touchend
+    if (!coords) { // Fallback to last known good position from state if coords are null
+      drawCanvas();
+      return;
+    };
+    
+    const { x: mouseX, y: mouseY } = coords;
+     const newPosition = {
+        x: mouseX - dragStart.x,
+        y: mouseY - dragStart.y,
+    };
+
+    updateOverlay(activeOverlay.id, { position: newPosition });
+    
+    const dragCtx = dragCanvasRef.current?.getContext('2d');
+    if (dragCtx) {
+      dragCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    }
+    // The main canvas will be redrawn by the useEffect watching `overlays`
   };
   
   const handleDownload = () => {
@@ -649,20 +678,30 @@ export default function Home() {
             <div className="flex flex-col items-center justify-center gap-4 lg:col-span-3">
               <div
                 className="relative flex w-full max-w-[400px] items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner aspect-square"
+                style={{touchAction: 'none'}}
+                onMouseUp={handleDragEnd}
+                onMouseLeave={handleDragEnd}
+                onTouchEnd={handleDragEnd}
+                onMouseMove={handleDragMove}
+                onTouchMove={handleDragMove}
               >
                 <canvas
                     ref={visibleCanvasRef}
                     width={CANVAS_SIZE}
                     height={CANVAS_SIZE}
-                    className={cn("rounded-lg w-full h-full", isDragging ? "cursor-grabbing" : "cursor-move")}
+                    className="absolute top-0 left-0 rounded-lg w-full h-full"
+                    style={{backgroundColor: backgroundColor}}
                     onMouseDown={handleDragStart}
-                    onMouseMove={handleDragMove}
-                    onMouseUp={handleDragEnd}
-                    onMouseLeave={handleDragEnd}
                     onTouchStart={handleDragStart}
-                    onTouchMove={handleDragMove}
-                    onTouchEnd={handleDragEnd}
-                    style={{backgroundColor: backgroundColor, touchAction: 'none'}}
+                 />
+                 <canvas
+                    ref={dragCanvasRef}
+                    width={CANVAS_SIZE}
+                    height={CANVAS_SIZE}
+                    className={cn(
+                      "absolute top-0 left-0 rounded-lg w-full h-full pointer-events-none",
+                      isDragging ? "cursor-grabbing" : "cursor-default"
+                    )}
                  />
               </div>
               {activeOverlay && (
