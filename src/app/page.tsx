@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC, useCallback } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension, type Gradient } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Sparkles, Contact } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Sparkles, Contact, ImageIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -176,6 +176,12 @@ interface TextOverlay {
   }
 }
 
+interface FrameImage {
+    src: string;
+    position: { x: number; y: number };
+    element: HTMLImageElement;
+}
+
 const colorPresets = [
     { name: 'Classic', fg: '#000000', bg: '#ffffff' },
     { name: 'Inverted', fg: '#ffffff', bg: '#000000' },
@@ -246,6 +252,8 @@ const generateVCardString = (vCardData: typeof vCardInitialState): string => {
   return parts.filter(Boolean).join('\n');
 };
 
+type DraggingTarget = { type: 'text'; id: number } | { type: 'image' };
+
 export default function Home() {
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
@@ -258,14 +266,16 @@ export default function Home() {
   const [qrOptions, setQrOptions] = useState<QRCodeStylingOptions>({
       width: CANVAS_SIZE,
       height: CANVAS_SIZE,
-      margin: 20,
+      margin: 0, // Set to 0 to allow background to show through
       qrOptions: {
           errorCorrectionLevel: "M",
       },
       dotsOptions: {
           type: 'square',
       },
-      backgroundOptions: {},
+      backgroundOptions: {
+        color: 'transparent'
+      },
       cornersSquareOptions: {
           type: 'square',
       },
@@ -281,7 +291,7 @@ export default function Home() {
   const [logo, setLogo] = useState<string | null>(null);
 
   const [dotsColor, setDotsColor] = useState<ColorOptions>(initialColorOptions);
-  const [bgColor, setBgColor] = useState<ColorOptions>(initialBgColorOptions);
+  const [bgColor, setBgColor] = useState<ColorOptions>({...initialBgColorOptions, solid: '#ffffff00'});
 
   const qrCodeRef = useRef<QRCodeStyling | null>(null);
   const qrWrapperRef = useRef<HTMLDivElement>(null);
@@ -289,10 +299,15 @@ export default function Home() {
   // Text overlay state
   const [overlays, setOverlays] = useState<TextOverlay[]>([]);
   const [activeOverlayId, setActiveOverlayId] = useState<number | null>(null);
+
+  // Background Image state
+  const [frameImage, setFrameImage] = useState<FrameImage | null>(null);
   
+  const [draggingTarget, setDraggingTarget] = useState<DraggingTarget | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const visibleCanvasRef = useRef<HTMLCanvasElement>(null);
   const dragCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -368,10 +383,7 @@ export default function Home() {
     }
   };
 
-  const drawOverlay = (ctx: CanvasRenderingContext2D, overlay: TextOverlay, clear = false) => {
-      if (clear) {
-        ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-      }
+  const drawOverlay = (ctx: CanvasRenderingContext2D, overlay: TextOverlay) => {
       ctx.save();
       
       if (overlay.shadow.enabled) {
@@ -406,6 +418,26 @@ export default function Home() {
       reader.onload = (event) => {
         if (event.target?.result) {
           setLogo(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
+  const handleFrameImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const img = new window.Image();
+          img.onload = () => {
+            setFrameImage({
+                src: event.target!.result as string,
+                position: {x: 0, y: 0},
+                element: img
+            });
+          }
+          img.src = event.target.result as string;
         }
       };
       reader.readAsDataURL(e.target.files[0]);
@@ -476,24 +508,33 @@ export default function Home() {
     }
   }, [qrContent, qrOptions, logo, dotsColor, bgColor]);
 
-  const drawVisibleCanvas = useCallback(() => {
-    const canvas = visibleCanvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    overlays.forEach(overlay => {
-      if (!isDragging || overlay.id !== activeOverlayId) {
-        drawOverlay(ctx, overlay);
+  const drawAllLayers = useCallback(() => {
+    // Draw background image
+    const bgCtx = bgCanvasRef.current?.getContext("2d");
+    if(bgCtx) {
+      bgCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      if(frameImage) {
+        if (!isDragging || draggingTarget?.type !== 'image') {
+          bgCtx.drawImage(frameImage.element, frameImage.position.x, frameImage.position.y);
+        }
       }
-    });
-  }, [overlays, isDragging, activeOverlayId, drawOverlay]);
+    }
 
+    // Draw text overlays
+    const visibleCtx = visibleCanvasRef.current?.getContext("2d");
+    if (visibleCtx) {
+        visibleCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        overlays.forEach(overlay => {
+            if (!isDragging || draggingTarget?.type !== 'text' || overlay.id !== draggingTarget.id) {
+                drawOverlay(visibleCtx, overlay);
+            }
+        });
+    }
+  }, [overlays, frameImage, isDragging, draggingTarget, drawOverlay]);
 
   useEffect(() => {
-    drawVisibleCanvas();
-  }, [drawVisibleCanvas]);
-
+    drawAllLayers();
+  }, [drawAllLayers]);
 
   const getEventCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = visibleCanvasRef.current;
@@ -540,25 +581,47 @@ export default function Home() {
             Math.abs(mouseY - overlay.position.y) < hitBoxHeight / 2
         )
     });
-
+    
     if (clickedOverlay) {
         if ('preventDefault' in e) e.preventDefault();
+        const target = {type: 'text', id: clickedOverlay.id} as DraggingTarget;
+        setDraggingTarget(target);
         setActiveOverlayId(clickedOverlay.id);
         setIsDragging(true);
         setDragStart({ x: mouseX - clickedOverlay.position.x, y: mouseY - clickedOverlay.position.y });
         
         const dragCtx = dragCanvasRef.current?.getContext('2d');
-        const visibleCtx = visibleCanvasRef.current?.getContext('2d');
-        if(dragCtx && visibleCtx) {
-            drawOverlay(dragCtx, clickedOverlay, true);
-            visibleCtx.clearRect(0,0,CANVAS_SIZE, CANVAS_SIZE);
-            drawVisibleCanvas();
+        if(dragCtx) {
+            dragCtx.clearRect(0,0,CANVAS_SIZE, CANVAS_SIZE);
+            drawOverlay(dragCtx, clickedOverlay);
         }
+        drawAllLayers(); // Redraw static layers
+        return;
     }
+
+    if(frameImage && 
+       mouseX > frameImage.position.x && mouseX < frameImage.position.x + frameImage.element.width &&
+       mouseY > frameImage.position.y && mouseY < frameImage.position.y + frameImage.element.height) {
+        if ('preventDefault' in e) e.preventDefault();
+        const target = {type: 'image'} as DraggingTarget;
+        setDraggingTarget(target);
+        setIsDragging(true);
+        setDragStart({ x: mouseX - frameImage.position.x, y: mouseY - frameImage.position.y });
+
+        const dragCtx = dragCanvasRef.current?.getContext('2d');
+        if(dragCtx) {
+            dragCtx.clearRect(0,0,CANVAS_SIZE, CANVAS_SIZE);
+            dragCtx.drawImage(frameImage.element, frameImage.position.x, frameImage.position.y);
+        }
+        drawAllLayers(); // Redraw static layers
+        return;
+    }
+
+    setActiveOverlayId(null);
   };
 
   const handleDragMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !activeOverlay) return;
+    if (!isDragging || !draggingTarget) return;
     if ('preventDefault' in e) e.preventDefault();
     
     const dragCanvas = dragCanvasRef.current;
@@ -574,41 +637,54 @@ export default function Home() {
     };
     
     const dragCtx = dragCanvas.getContext('2d');
-    if(dragCtx){
-        drawOverlay(dragCtx, {...activeOverlay, position: newPosition}, true);
+    if (dragCtx) {
+        dragCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        if (draggingTarget.type === 'text') {
+            const overlay = overlays.find(o => o.id === draggingTarget.id);
+            if (overlay) {
+                drawOverlay(dragCtx, {...overlay, position: newPosition});
+            }
+        } else if (draggingTarget.type === 'image' && frameImage) {
+            dragCtx.drawImage(frameImage.element, newPosition.x, newPosition.y);
+        }
     }
   };
 
   const handleDragEnd = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !activeOverlay) return;
+    if (!isDragging || !draggingTarget) return;
     
-    const dragCtx = dragCanvasRef.current?.getContext('2d');
-    
-    let finalPosition;
     const coords = getEventCoordinates(e as React.MouseEvent<HTMLCanvasElement>);
+    let finalPosition: {x: number, y: number} | null = null;
 
-    if(coords) {
-      finalPosition = {
-        x: coords.x - dragStart.x,
-        y: coords.y - dragStart.y,
-      };
-    } else {
-        const activeOverlayCurrent = overlays.find(o => o.id === activeOverlayId);
-        if(activeOverlayCurrent) {
-            finalPosition = activeOverlayCurrent.position;
+    if (coords) {
+        finalPosition = {
+            x: coords.x - dragStart.x,
+            y: coords.y - dragStart.y,
+        };
+    } else { // Handle touch end where coordinates might not be in the event
+        if (draggingTarget.type === 'text') {
+            const overlay = overlays.find(o => o.id === draggingTarget.id);
+            if (overlay) finalPosition = overlay.position;
+        } else if (draggingTarget.type === 'image' && frameImage) {
+            finalPosition = frameImage.position;
+        }
+    }
+    
+    if (finalPosition) {
+        if (draggingTarget.type === 'text') {
+            updateOverlay(draggingTarget.id, { position: finalPosition });
+        } else if (draggingTarget.type === 'image' && frameImage) {
+            setFrameImage({ ...frameImage, position: finalPosition });
         }
     }
 
-
-    if (activeOverlay && finalPosition) {
-        updateOverlay(activeOverlay.id, { position: finalPosition });
-    }
-
+    const dragCtx = dragCanvasRef.current?.getContext('2d');
     if (dragCtx) {
       dragCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     }
     
     setIsDragging(false);
+    setDraggingTarget(null);
   };
   
   const handleDownload = async () => {
@@ -620,6 +696,12 @@ export default function Home() {
     const ctx = downloadCanvas.getContext('2d');
     if (!ctx) return;
     
+    // 1. Draw background image
+    if (frameImage) {
+        ctx.drawImage(frameImage.element, frameImage.position.x, frameImage.position.y);
+    }
+    
+    // 2. Draw QR code
     const qrDataUrl = await qrCodeRef.current.getRawData(downloadFormat);
     if (!qrDataUrl) return;
 
@@ -632,6 +714,8 @@ export default function Home() {
     });
 
     ctx.drawImage(qrImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    // 3. Draw text overlays
     overlays.forEach(o => drawOverlay(ctx, o));
 
     const mimeType = downloadFormat === "jpeg" ? "image/jpeg" : "image/png";
@@ -833,6 +917,34 @@ export default function Home() {
                       </AccordionItem>
                     </Accordion>
                   </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="background-image">
+                   <AccordionTrigger className="text-lg font-semibold">
+                     <div className="flex items-center">
+                       <ImageIcon className="mr-2 h-5 w-5 text-accent" />
+                       Background Image
+                     </div>
+                   </AccordionTrigger>
+                   <AccordionContent className="pt-4 space-y-4">
+                        <div className="grid gap-2">
+                            <Label>Upload Image</Label>
+                            <div className="flex items-center gap-2">
+                                <Input id="frame-image-upload" type="file" accept="image/*" onChange={handleFrameImageUpload} className="flex-grow"/>
+                                {frameImage && (
+                                    <Button variant="ghost" size="icon" onClick={() => setFrameImage(null)}>
+                                        <Trash2 className="h-4 w-4"/>
+                                    </Button>
+                                )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">The image will be placed behind the QR code. You can drag it to position it.</p>
+                        </div>
+                        {frameImage && (
+                            <Button variant="ghost" size="sm" onClick={() => setFrameImage({...frameImage, position:{x:0, y:0}})}>
+                                <Move className="mr-2 h-4 w-4" /> Reset Position
+                            </Button>
+                        )}
+                   </AccordionContent>
                 </AccordionItem>
                 
                 <AccordionItem value="text-overlay">
@@ -1052,6 +1164,12 @@ export default function Home() {
                 className="relative flex w-full max-w-[400px] items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner aspect-square"
                 style={{touchAction: 'none'}}
               >
+                 <canvas
+                    ref={bgCanvasRef}
+                    width={CANVAS_SIZE}
+                    height={CANVAS_SIZE}
+                    className="absolute top-0 left-0 rounded-lg w-full h-full"
+                 />
                  <div ref={qrWrapperRef} className="absolute inset-0" />
                  {/* This canvas is for interaction and drawing non-active overlays */}
                  <canvas
@@ -1124,5 +1242,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
