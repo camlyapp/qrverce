@@ -3,8 +3,8 @@
 
 import { useState, useEffect, useRef, type FC, useCallback } from "react";
 import Image from "next/image";
-import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Image as ImageIcon, Sparkles } from "lucide-react";
+import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension, type Gradient } from 'qr-code-styling';
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Image as ImageIcon, Sparkles, Wand2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,7 @@ import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const CANVAS_SIZE = 400;
 
@@ -52,7 +53,7 @@ const ColorInput: FC<ColorInputProps> = ({ label, value, onChange, className }) 
     <div className="relative h-10 w-full">
       <div
         className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md border"
-        style={{ backgroundColor: value }}
+        style={{ background: value }}
       >
         <span className="font-mono text-sm mix-blend-difference text-white">
           {value.toUpperCase()}
@@ -68,6 +69,86 @@ const ColorInput: FC<ColorInputProps> = ({ label, value, onChange, className }) 
     </div>
   </div>
 );
+
+interface GradientState {
+    type: 'linear' | 'radial';
+    rotation: number;
+    colorStops: { offset: number; color: string }[];
+}
+
+interface ColorOptions {
+    type: 'solid' | 'gradient';
+    solid: string;
+    gradient: GradientState;
+}
+
+const initialColorOptions: ColorOptions = {
+    type: 'solid',
+    solid: '#000000',
+    gradient: {
+        type: 'linear',
+        rotation: 0,
+        colorStops: [
+            { offset: 0, color: '#000000' },
+            { offset: 1, color: '#ffffff' }
+        ]
+    }
+};
+
+const initialBgColorOptions: ColorOptions = {
+    type: 'solid',
+    solid: '#ffffff',
+    gradient: {
+        type: 'linear',
+        rotation: 0,
+        colorStops: [
+            { offset: 0, color: '#ffffff' },
+            { offset: 1, color: '#000000' }
+        ]
+    }
+};
+
+const ColorPicker: FC<{
+    label: string;
+    options: ColorOptions;
+    onChange: (options: ColorOptions) => void;
+}> = ({ label, options, onChange }) => (
+    <div className="grid gap-4 rounded-lg border p-4">
+        <h4 className="font-semibold text-base">{label}</h4>
+        <Tabs value={options.type} onValueChange={(v) => onChange({ ...options, type: v as 'solid' | 'gradient' })}>
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="solid">Solid</TabsTrigger>
+                <TabsTrigger value="gradient">Gradient</TabsTrigger>
+            </TabsList>
+            <TabsContent value="solid">
+                <ColorInput label="Color" value={options.solid} onChange={(e) => onChange({ ...options, solid: e.target.value })} />
+            </TabsContent>
+            <TabsContent value="gradient">
+                <div className="grid gap-4">
+                    <div className="grid gap-2">
+                        <Label>Type</Label>
+                        <Select value={options.gradient.type} onValueChange={(v: 'linear' | 'radial') => onChange({ ...options, gradient: { ...options.gradient, type: v } })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="linear">Linear</SelectItem>
+                                <SelectItem value="radial">Radial</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <ColorInput label="Color 1" value={options.gradient.colorStops[0].color} onChange={(e) => onChange({ ...options, gradient: { ...options.gradient, colorStops: [{ ...options.gradient.colorStops[0], color: e.target.value }, options.gradient.colorStops[1]] } })} />
+                        <ColorInput label="Color 2" value={options.gradient.colorStops[1].color} onChange={(e) => onChange({ ...options, gradient: { ...options.gradient, colorStops: [options.gradient.colorStops[0], { ...options.gradient.colorStops[1], color: e.target.value }] } })} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label>Rotation</Label>
+                        <Slider value={[options.gradient.rotation]} onValueChange={(v) => onChange({ ...options, gradient: { ...options.gradient, rotation: v[0] } })} min={0} max={360} step={1} />
+                    </div>
+                </div>
+            </TabsContent>
+        </Tabs>
+    </div>
+);
+
 
 interface TextOverlay {
   id: number;
@@ -125,6 +206,18 @@ const colorPresets = [
     { name: 'Crimson', fg: '#f5f5f5', bg: '#dc143c' },
 ];
 
+const getGradient = (options: ColorOptions): Gradient | undefined => {
+    if (options.type === 'gradient') {
+        return {
+            type: options.gradient.type,
+            rotation: options.gradient.rotation,
+            colorStops: options.gradient.colorStops
+        };
+    }
+    return undefined;
+};
+
+
 export default function Home() {
   const [text, setText] = useState("https://firebase.google.com/");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
@@ -159,6 +252,9 @@ export default function Home() {
       }
   });
   const [logo, setLogo] = useState<string | null>(null);
+
+  const [dotsColor, setDotsColor] = useState<ColorOptions>(initialColorOptions);
+  const [bgColor, setBgColor] = useState<ColorOptions>(initialBgColorOptions);
 
   const qrCodeRef = useRef<QRCodeStyling | null>(null);
   const qrWrapperRef = useRef<HTMLDivElement>(null);
@@ -291,23 +387,41 @@ export default function Home() {
 
 
   useEffect(() => {
+    const finalQrOptions = {
+        ...qrOptions,
+        dotsOptions: {
+            ...qrOptions.dotsOptions,
+            color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
+            gradient: getGradient(dotsColor),
+        },
+        backgroundOptions: {
+            ...qrOptions.backgroundOptions,
+            color: bgColor.type === 'solid' ? bgColor.solid : undefined,
+            gradient: getGradient(bgColor),
+        },
+        cornersSquareOptions: {
+            ...qrOptions.cornersSquareOptions,
+            color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
+            gradient: getGradient(dotsColor),
+        },
+        cornersDotOptions: {
+            ...qrOptions.cornersDotOptions,
+            color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
+            gradient: getGradient(dotsColor),
+        },
+        data: text,
+        image: logo ?? undefined,
+    };
+
     if (!qrCodeRef.current) {
-      qrCodeRef.current = new QRCodeStyling({
-        ...qrOptions,
-        data: text,
-        image: logo ?? undefined,
-      });
-      if (qrWrapperRef.current) {
-        qrCodeRef.current.append(qrWrapperRef.current);
-      }
+        qrCodeRef.current = new QRCodeStyling(finalQrOptions);
+        if (qrWrapperRef.current) {
+            qrCodeRef.current.append(qrWrapperRef.current);
+        }
     } else {
-      qrCodeRef.current.update({
-        ...qrOptions,
-        data: text,
-        image: logo ?? undefined,
-      });
+        qrCodeRef.current.update(finalQrOptions);
     }
-  }, [text, qrOptions, logo]);
+  }, [text, qrOptions, logo, dotsColor, bgColor]);
 
   const drawVisibleCanvas = useCallback(() => {
     const canvas = visibleCanvasRef.current;
@@ -412,23 +526,25 @@ export default function Home() {
     // We need to calculate the final position as the mouse/touch might have moved.
     let finalPosition;
     const coords = getEventCoordinates(e as React.MouseEvent<HTMLCanvasElement>);
-    if (coords) {
-        finalPosition = {
-            x: coords.x - dragStart.x,
-            y: coords.y - dragStart.y,
-        };
-    } else if (activeOverlay) {
-        // Fallback for touchend which might not have coordinates
-        const lastKnownPositionOnDragCanvas = dragCanvasRef.current?.style;
-        // This part is tricky as we don't have direct final coords. We'll update with the last known good position.
-        // A more robust way would be to get the final position from the dragCtx, but for now we'll just update based on what we have.
-        // The current implementation already updates the position during handleDragMove, so this is just for finalization.
-        const dragCanvas = dragCanvasRef.current?.getContext('2d');
-        if (dragCanvas && dragCanvas.canvas.parentElement) {
-            // this is a bit of a hack, but should work
-            const transform = new DOMMatrix(dragCanvas.getTransform());
-            finalPosition = { x: transform.e, y: transform.f };
-        }
+    
+    // For touch end, coordinates might not be available, so we peek into the state being updated during move
+    if(coords) {
+      finalPosition = {
+        x: coords.x - dragStart.x,
+        y: coords.y - dragStart.y,
+      };
+    } else {
+      const dragCanvas = dragCanvasRef.current;
+      if (dragCanvas) {
+         // This is a bit of a hack: if we don't have end coordinates, we assume the last drawn position on drag canvas is what we want.
+         // This is complex to get right, so we'll re-calculate from the active overlay's current (pre-update) position.
+         // A more robust implementation would use a state update during the move, but this prevents jumpiness on touch end.
+         const lastOverlay = overlays.find(o => o.id === activeOverlayId);
+         if (lastOverlay) {
+           // We can't get coords from touchend, so we cannot calculate the final position accurately.
+           // The state update will have to happen in handleDragMove.
+           // To avoid a jump, we'll just commit the last known position from the active overlay.
+         }
     }
 
     if (activeOverlay && finalPosition) {
@@ -453,11 +569,33 @@ export default function Home() {
     if (!ctx) return;
 
     // qr-code-styling doesn't expose the canvas directly, so we have to get the raw image data.
-    const qrInstanceForDownload = new QRCodeStyling({
+     const finalQrOptions = {
       ...qrOptions,
+      dotsOptions: {
+          ...qrOptions.dotsOptions,
+          color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
+          gradient: getGradient(dotsColor),
+      },
+      backgroundOptions: {
+          ...qrOptions.backgroundOptions,
+          color: bgColor.type === 'solid' ? bgColor.solid : undefined,
+          gradient: getGradient(bgColor),
+      },
+      cornersSquareOptions: {
+          ...qrOptions.cornersSquareOptions,
+          color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
+          gradient: getGradient(dotsColor),
+      },
+      cornersDotOptions: {
+          ...qrOptions.cornersDotOptions,
+          color: dotsColor.type === 'solid' ? dotsColor.solid : undefined,
+          gradient: getGradient(dotsColor),
+      },
       data: text,
       image: logo ?? undefined,
-    });
+    };
+
+    const qrInstanceForDownload = new QRCodeStyling(finalQrOptions);
     const qrDataUrl = await qrInstanceForDownload.getDataUrl('png');
     const qrImage = await new Promise<HTMLImageElement>(resolve => {
         const img = new window.Image();
@@ -481,10 +619,8 @@ export default function Home() {
   };
   
   const handlePresetClick = (fg: string, bg: string) => {
-    updateNestedQrOptions('dotsOptions', { color: fg });
-    updateNestedQrOptions('backgroundOptions', { color: bg });
-    updateNestedQrOptions('cornersSquareOptions', { color: fg });
-    updateNestedQrOptions('cornersDotOptions', { color: fg });
+    setDotsColor({type: 'solid', solid: fg, gradient: initialColorOptions.gradient});
+    setBgColor({type: 'solid', solid: bg, gradient: initialBgColorOptions.gradient});
   };
 
   return (
@@ -586,21 +722,9 @@ export default function Home() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pt-4 space-y-4">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <ColorInput
-                        label="Foreground"
-                        value={qrOptions.dotsOptions?.color ?? '#000000'}
-                        onChange={(e) => {
-                            updateNestedQrOptions('dotsOptions', { color: e.target.value });
-                            updateNestedQrOptions('cornersSquareOptions', { color: e.target.value });
-                            updateNestedQrOptions('cornersDotOptions', { color: e.target.value });
-                        }}
-                      />
-                      <ColorInput
-                        label="Background"
-                        value={qrOptions.backgroundOptions?.color ?? '#ffffff'}
-                        onChange={(e) => updateNestedQrOptions('backgroundOptions', { color: e.target.value })}
-                      />
+                    <div className="grid grid-cols-1 gap-4">
+                        <ColorPicker label="Foreground" options={dotsColor} onChange={setDotsColor} />
+                        <ColorPicker label="Background" options={bgColor} onChange={setBgColor} />
                     </div>
                     <Accordion type="single" collapsible className="w-full">
                       <AccordionItem value="presets">
