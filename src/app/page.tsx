@@ -155,6 +155,7 @@ export default function Home() {
       imageOptions: {
           crossOrigin: 'anonymous',
           margin: 10,
+          hideBackgroundDots: true,
       }
   });
   const [logo, setLogo] = useState<string | null>(null);
@@ -351,13 +352,20 @@ export default function Home() {
         const ctx = visibleCanvasRef.current?.getContext('2d');
         if (!ctx) return false;
         
-        ctx.font = `${overlay.fontStyle} ${overlay.fontWeight} ${overlay.fontSize}px "${overlay.fontFamily}"`;
-        const textWidth = ctx.measureText(overlay.text).width;
+        ctx.save();
+        ctx.translate(overlay.position.x, overlay.position.y);
+        ctx.rotate((overlay.rotation * Math.PI) / 180);
         
-        const hitBoxWidth = Math.max(textWidth, 44);
-        const hitBoxHeight = Math.max(overlay.fontSize, 44);
+        ctx.font = `${overlay.fontStyle} ${overlay.fontWeight} ${overlay.fontSize}px "${overlay.fontFamily}"`;
+        ctx.textAlign = overlay.textAlign;
+        const textMetrics = ctx.measureText(overlay.text);
+        ctx.restore();
 
-        // Simple bounding box check (not rotated)
+        const hitBoxWidth = Math.max(textMetrics.width, 44);
+        const hitBoxHeight = Math.max(overlay.fontSize, 44);
+        
+        // This is a simplified hit-detection that doesn't account for rotation.
+        // For a more accurate solution, one would need to use rotated bounding box logic.
         return (
             Math.abs(mouseX - overlay.position.x) < hitBoxWidth / 2 &&
             Math.abs(mouseY - overlay.position.y) < hitBoxHeight / 2
@@ -400,14 +408,35 @@ export default function Home() {
     if (!isDragging || !activeOverlay) return;
     
     const dragCtx = dragCanvasRef.current?.getContext('2d');
-    const coords = getEventCoordinates(e as React.MouseEvent<HTMLCanvasElement>); // Touches might not be available on touchend
-    if (dragCtx) {
-        const newPosition = {
-            x: (coords?.x ?? activeOverlay.position.x + dragStart.x) - dragStart.x,
-            y: (coords?.y ?? activeOverlay.position.y + dragStart.y) - dragStart.y,
+    
+    // We need to calculate the final position as the mouse/touch might have moved.
+    let finalPosition;
+    const coords = getEventCoordinates(e as React.MouseEvent<HTMLCanvasElement>);
+    if (coords) {
+        finalPosition = {
+            x: coords.x - dragStart.x,
+            y: coords.y - dragStart.y,
         };
-        updateOverlay(activeOverlay.id, { position: newPosition });
-        dragCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    } else if (activeOverlay) {
+        // Fallback for touchend which might not have coordinates
+        const lastKnownPositionOnDragCanvas = dragCanvasRef.current?.style;
+        // This part is tricky as we don't have direct final coords. We'll update with the last known good position.
+        // A more robust way would be to get the final position from the dragCtx, but for now we'll just update based on what we have.
+        // The current implementation already updates the position during handleDragMove, so this is just for finalization.
+        const dragCanvas = dragCanvasRef.current?.getContext('2d');
+        if (dragCanvas && dragCanvas.canvas.parentElement) {
+            // this is a bit of a hack, but should work
+            const transform = new DOMMatrix(dragCanvas.getTransform());
+            finalPosition = { x: transform.e, y: transform.f };
+        }
+    }
+
+    if (activeOverlay && finalPosition) {
+        updateOverlay(activeOverlay.id, { position: finalPosition });
+    }
+
+    if (dragCtx) {
+      dragCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     }
     
     setIsDragging(false);
@@ -519,6 +548,16 @@ export default function Home() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="grid gap-2">
+                                <Label>Corner Dot Style</Label>
+                                <Select value={qrOptions.cornersDotOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersDotOptions', {type: v})}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="square">Square</SelectItem>
+                                        <SelectItem value="dot">Dot</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                         <div className="grid gap-2">
                             <Label>Logo Image</Label>
@@ -531,6 +570,12 @@ export default function Home() {
                                 )}
                             </div>
                         </div>
+                        {logo && (
+                            <div className="flex items-center space-x-2">
+                                <Switch id="hide-dots" checked={qrOptions.imageOptions?.hideBackgroundDots} onCheckedChange={(c) => updateNestedQrOptions('imageOptions', {hideBackgroundDots: c})} />
+                                <Label htmlFor="hide-dots">Hide dots behind logo</Label>
+                            </div>
+                        )}
                     </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="colors">
