@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, type FC } from "react";
+import { useState, useEffect, useRef, type FC, useCallback } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
-import { Download, Palette, Settings2 } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Slider } from "@/components/ui/slider";
 
 interface ColorInputProps {
   label: string;
@@ -63,48 +64,120 @@ export default function Home() {
   const [errorCorrectionLevel, setErrorCorrectionLevel] = useState<QRCode.QRCodeErrorCorrectionLevel>("medium");
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [downloadFormat, setDownloadFormat] = useState("png");
-  const [imageKey, setImageKey] = useState(0);
+
+  // Text overlay state
+  const [overlayText, setOverlayText] = useState("");
+  const [textColor, setTextColor] = useState("#000000");
+  const [fontSize, setFontSize] = useState(40);
+  const [fontFamily, setFontFamily] = useState("Inter");
+  const [textRotation, setTextRotation] = useState(0);
+  const [textPosition, setTextPosition] = useState({ x: 150, y: 150 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const visibleCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    if (!text.trim()) {
-      setQrCodeDataUrl(null);
-      return;
+  const drawCanvas = useCallback(async () => {
+    const canvas = visibleCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw QR Code from hidden canvas if text is valid
+    if (text.trim() && canvasRef.current) {
+        try {
+            const options: QRCode.QRCodeToCanvasOptions = {
+                errorCorrectionLevel,
+                margin: 2,
+                width: 300,
+                color: {
+                    dark: foregroundColor,
+                    light: backgroundColor,
+                },
+            };
+            await QRCode.toCanvas(canvasRef.current, text, options);
+            ctx.drawImage(canvasRef.current, 0, 0);
+        } catch (err) {
+            console.error("Failed to generate QR code:", err);
+            // Optionally draw a placeholder or error message on the visible canvas
+            ctx.fillStyle = backgroundColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    } else {
+        // Draw background if no QR code
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    const generateQrCode = async () => {
-      try {
-        const options: QRCode.QRCodeToCanvasOptions = {
-          errorCorrectionLevel,
-          margin: 2,
-          width: 300,
-          color: {
-            dark: foregroundColor,
-            light: backgroundColor,
-          },
-        };
-        if (canvasRef.current) {
-          await QRCode.toCanvas(canvasRef.current, text, options);
-          const dataUrl = canvasRef.current.toDataURL("image/png");
-          setQrCodeDataUrl(dataUrl);
-          setImageKey((k) => k + 1);
-        }
-      } catch (err) {
-        console.error("Failed to generate QR code:", err);
-        setQrCodeDataUrl(null);
-      }
-    };
 
-    const timeoutId = setTimeout(generateQrCode, 300);
+    // Draw overlay text
+    if (overlayText) {
+      ctx.save();
+      ctx.translate(textPosition.x, textPosition.y);
+      ctx.rotate((textRotation * Math.PI) / 180);
+      ctx.fillStyle = textColor;
+      ctx.font = `${fontSize}px "${fontFamily}"`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(overlayText, 0, 0);
+      ctx.restore();
+    }
+    
+    setQrCodeDataUrl(canvas.toDataURL("image/png"));
+
+  }, [text, foregroundColor, backgroundColor, errorCorrectionLevel, overlayText, textColor, fontSize, fontFamily, textRotation, textPosition]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(drawCanvas, 300);
     return () => clearTimeout(timeoutId);
-  }, [text, foregroundColor, backgroundColor, errorCorrectionLevel]);
+  }, [drawCanvas]);
+
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = visibleCanvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // A simple hit test for the text
+    const textWidth = visibleCanvasRef.current?.getContext('2d')?.measureText(overlayText).width ?? 0;
+    if (
+      overlayText &&
+      Math.abs(mouseX - textPosition.x) < textWidth / 2 &&
+      Math.abs(mouseY - textPosition.y) < fontSize / 2
+    ) {
+      setIsDragging(true);
+      setDragStart({ x: mouseX - textPosition.x, y: mouseY - textPosition.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !visibleCanvasRef.current) return;
+    const rect = visibleCanvasRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    setTextPosition({
+      x: mouseX - dragStart.x,
+      y: mouseY - dragStart.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+  
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
 
   const handleDownload = () => {
-    if (!qrCodeDataUrl || !canvasRef.current) return;
-
+    if (!visibleCanvasRef.current) return;
     const mimeType = downloadFormat === "jpeg" ? "image/jpeg" : "image/png";
-    const downloadUrl = canvasRef.current.toDataURL(mimeType, 1.0);
+    const downloadUrl = visibleCanvasRef.current.toDataURL(mimeType, 1.0);
 
     const link = document.createElement("a");
     link.href = downloadUrl;
@@ -159,6 +232,49 @@ export default function Home() {
                   />
                 </div>
               </div>
+              
+              <div className="grid gap-4 rounded-lg border p-4">
+                 <h3 className="flex items-center text-lg font-semibold">
+                  <Type className="mr-2 h-5 w-5 text-accent" />
+                  Text Overlay
+                </h3>
+                <div className="grid gap-4">
+                    <Input
+                        placeholder="Your text here..."
+                        value={overlayText}
+                        onChange={(e) => setOverlayText(e.target.value)}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <ColorInput
+                        label="Text Color"
+                        value={textColor}
+                        onChange={(e) => setTextColor(e.target.value)}
+                      />
+                       <div className="grid gap-2">
+                         <Label>Font</Label>
+                         <Select value={fontFamily} onValueChange={setFontFamily}>
+                           <SelectTrigger><SelectValue /></SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="Inter">Inter</SelectItem>
+                             <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
+                             <SelectItem value="Arial">Arial</SelectItem>
+                             <SelectItem value="Courier New">Courier New</SelectItem>
+                             <SelectItem value="Verdana">Verdana</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       </div>
+                    </div>
+                     <div className="grid gap-2">
+                        <Label>Font Size: {fontSize}px</Label>
+                        <Slider value={[fontSize]} onValueChange={(v) => setFontSize(v[0])} min={10} max={80} step={1} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label>Rotation: {textRotation}°</Label>
+                        <Slider value={[textRotation]} onValueChange={(v) => setTextRotation(v[0])} min={-180} max={180} step={1} />
+                    </div>
+                </div>
+              </div>
+
 
               <div className="grid gap-4 rounded-lg border p-4">
                  <h3 className="flex items-center text-lg font-semibold">
@@ -189,31 +305,32 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex items-center justify-center">
+            <div className="flex flex-col items-center justify-center gap-4">
               <div
-                className="relative flex aspect-square w-full max-w-[300px] items-center justify-center rounded-lg p-4 shadow-inner"
-                style={{ backgroundColor }}
+                className="relative flex aspect-square w-full max-w-[300px] items-center justify-center rounded-lg shadow-inner"
               >
-                {qrCodeDataUrl ? (
-                  <Image
-                    key={imageKey}
-                    src={qrCodeDataUrl}
-                    alt="Generated QR Code"
+                <canvas
+                    ref={visibleCanvasRef}
                     width={300}
                     height={300}
-                    className="animate-in fade-in-0 zoom-in-95 duration-500"
-                    unoptimized
-                    data-ai-hint="qr code"
-                  />
-                ) : text.trim() ? (
-                  <Skeleton className="h-full w-full" />
-                ) : (
-                  <div className="text-center text-muted-foreground">
-                    <p>Your QR code will appear here.</p>
-                    <p className="text-sm">Enter some text to begin.</p>
-                  </div>
-                )}
+                    className={cn("rounded-lg", isDragging && "cursor-grabbing")}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                    style={{backgroundColor: backgroundColor}}
+                 />
               </div>
+              {overlayText && (
+                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <Button variant="ghost" size="sm" onClick={() => setTextPosition({x:150, y:150})}>
+                        <Move className="mr-2 h-4 w-4" /> Reset Position
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setTextRotation(0)}>
+                        <RotateCcw className="mr-2 h-4 w-4" /> Reset Rotation
+                    </Button>
+                 </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -246,7 +363,7 @@ export default function Home() {
           </Button>
         </CardFooter>
       </Card>
-      <canvas ref={canvasRef} style={{ display: "none" }} />
+      <canvas ref={canvasRef} width="300" height="300" style={{ display: "none" }} />
     </main>
   );
 }
