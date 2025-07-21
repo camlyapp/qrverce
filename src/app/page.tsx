@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, Image as ImageIcon, Square, Dot, Contrast } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +42,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 const CANVAS_SIZE = 400;
 
@@ -247,10 +248,51 @@ const generateTwitterString = (data: typeof socialInitialState) => `https://twit
 const generateFacebookString = (data: typeof socialInitialState) => `https://facebook.com/${data.username}`;
 const generateInstagramString = (data: typeof socialInitialState) => `https://instagram.com/${data.username}`;
 
+const defaultQrOptions: QRCodeStylingOptions = {
+    width: CANVAS_SIZE,
+    height: CANVAS_SIZE,
+    margin: 20,
+    qrOptions: {
+        errorCorrectionLevel: "H",
+    },
+    dotsOptions: {
+        type: 'rounded',
+        color: '#000000',
+    },
+    backgroundOptions: {
+        color: '#ffffff',
+    },
+    cornersSquareOptions: {
+        type: 'extra-rounded',
+    },
+    cornersDotOptions: {
+        type: 'dot',
+    },
+    imageOptions: {
+        hideBackgroundDots: true,
+        imageSize: 0.4,
+        margin: 4,
+    }
+};
+
+interface GradientState {
+    enabled: boolean;
+    type: 'linear' | 'radial';
+    color1: string;
+    color2: string;
+    rotation: number;
+}
+
+const defaultGradientState: GradientState = {
+    enabled: false,
+    type: 'linear',
+    color1: '#6a11cb',
+    color2: '#2575fc',
+    rotation: 0,
+};
+
 export default function Home() {
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
-  const [foregroundColor, setForegroundColor] = useState("#000000");
-  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
   
   const [activeTab, setActiveTab] = useState('text');
@@ -275,14 +317,12 @@ export default function Home() {
   const [instagramData, setInstagramData] = useState(socialInitialState);
   const [plainTextData, setPlainTextData] = useState(plainTextInitialState);
 
-  const [qrOptions, setQrOptions] = useState<QRCodeStylingOptions>({
-      width: CANVAS_SIZE,
-      height: CANVAS_SIZE,
-      margin: 20,
-      qrOptions: {
-          errorCorrectionLevel: "M",
-      }
-  });
+  const [qrOptions, setQrOptions] = useState<QRCodeStylingOptions>(defaultQrOptions);
+  const [logo, setLogo] = useState<string | null>(null);
+
+  const [dotsGradient, setDotsGradient] = useState<GradientState>(defaultGradientState);
+  const [backgroundGradient, setBackgroundGradient] = useState<GradientState>({ ...defaultGradientState, color1: '#ffffff', color2: '#e9e9e9' });
+
 
   const qrCodeRef = useRef<QRCodeStyling | null>(null);
   const qrWrapperRef = useRef<HTMLDivElement>(null);
@@ -372,6 +412,15 @@ export default function Home() {
     overlays.forEach(o => drawOverlay(finalCtx, o));
   };
   
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            setLogo(event.target?.result as string);
+        };
+        reader.readAsDataURL(e.target.files[0]);
+    }
+  };
 
   useEffect(() => {
     let newContent = "";
@@ -440,28 +489,51 @@ export default function Home() {
 
 
   useEffect(() => {
-    const finalQrOptions: QRCodeStylingOptions = {
-        ...qrOptions,
-        data: qrContent,
-        dotsOptions: { color: foregroundColor },
-        backgroundOptions: { color: backgroundColor },
-    };
-    if (!qrCodeRef.current) {
-        qrCodeRef.current = new QRCodeStyling(finalQrOptions);
-    } else {
-        qrCodeRef.current.update(finalQrOptions);
-    }
+      const finalQrOptions: QRCodeStylingOptions = {
+          ...qrOptions,
+          data: qrContent,
+          image: logo ?? undefined,
+          dotsOptions: {
+              ...qrOptions.dotsOptions,
+              ...(dotsGradient.enabled ? {
+                  gradient: {
+                      type: dotsGradient.type,
+                      rotation: dotsGradient.rotation,
+                      colorStops: [{ offset: 0, color: dotsGradient.color1 }, { offset: 1, color: dotsGradient.color2 }]
+                  }
+              } : {
+                  color: qrOptions.dotsOptions?.color
+              })
+          },
+          backgroundOptions: {
+              ...qrOptions.backgroundOptions,
+              ...(backgroundGradient.enabled ? {
+                  gradient: {
+                      type: backgroundGradient.type,
+                      rotation: backgroundGradient.rotation,
+                      colorStops: [{ offset: 0, color: backgroundGradient.color1 }, { offset: 1, color: backgroundGradient.color2 }]
+                  }
+              } : {
+                  color: qrOptions.backgroundOptions?.color
+              })
+          },
+      };
 
-    let timeoutId: NodeJS.Timeout;
-    if (qrWrapperRef.current && qrCodeRef.current) {
-        qrWrapperRef.current.innerHTML = '';
-        qrCodeRef.current.append(qrWrapperRef.current);
-        // Delay drawing to canvas to ensure QR code has rendered
-        timeoutId = setTimeout(drawFinalCanvas, 200);
-    }
+      if (!qrCodeRef.current) {
+          qrCodeRef.current = new QRCodeStyling(finalQrOptions);
+      } else {
+          qrCodeRef.current.update(finalQrOptions);
+      }
 
-    return () => clearTimeout(timeoutId);
-  }, [qrContent, foregroundColor, backgroundColor, qrOptions, overlays]);
+      let timeoutId: NodeJS.Timeout;
+      if (qrWrapperRef.current && qrCodeRef.current) {
+          qrWrapperRef.current.innerHTML = '';
+          qrCodeRef.current.append(qrWrapperRef.current);
+          timeoutId = setTimeout(drawFinalCanvas, 200);
+      }
+
+      return () => clearTimeout(timeoutId);
+  }, [qrContent, qrOptions, logo, overlays, dotsGradient, backgroundGradient]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -490,7 +562,7 @@ export default function Home() {
     if (clickedOverlay) {
         setActiveOverlayId(clickedOverlay.id);
         setIsDragging(true);
-        setDragStart({ x: mouseX - clickedOverlay.position.x, y: mouseY - clickedOverlay.position.y });
+        setDragStart({ x: mouseX - clickedOverlay.position.x, y: mouseY - dragStart.y });
     } else {
       setActiveOverlayId(null);
     }
@@ -520,8 +592,24 @@ export default function Home() {
     await drawFinalCanvas();
     const finalCanvas = finalCanvasRef.current;
     if (!finalCanvas) return;
+    
+    if (downloadFormat === 'svg') {
+        if (qrCodeRef.current) {
+            const svgString = await qrCodeRef.current.getRawData('svg');
+            const blob = new Blob([svgString!], { type: "image/svg+xml" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `qrcode.svg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+        return;
+    }
 
-    const mimeType = downloadFormat === "jpeg" ? "image/jpeg" : "image/png";
+    const mimeType = downloadFormat === "jpeg" ? "image/jpeg" : `image/${downloadFormat}`;
     const url = finalCanvas.toDataURL(mimeType, 1.0);
     const link = document.createElement("a");
     link.href = url;
@@ -574,7 +662,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-6 md:p-8">
-      <Card className="w-full max-w-5xl overflow-hidden rounded-xl shadow-2xl">
+      <Card className="w-full max-w-6xl overflow-hidden rounded-xl shadow-2xl">
         <CardHeader className="bg-card/50">
           <CardTitle className="font-headline text-3xl font-bold tracking-tight text-primary md:text-4xl">
             QRCodeMint
@@ -911,21 +999,145 @@ export default function Home() {
                       Customize Colors
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pt-4">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <ColorInput
-                        label="Foreground"
-                        value={foregroundColor}
-                        onChange={(e) => setForegroundColor(e.target.value)}
-                      />
-                      <ColorInput
-                        label="Background"
-                        value={backgroundColor}
-                        onChange={(e) => setBackgroundColor(e.target.value)}
-                      />
+                  <AccordionContent className="pt-4 space-y-6">
+                    <div>
+                        <Label className="font-medium text-base">Dots</Label>
+                        <div className="flex items-center space-x-2 mt-2">
+                           <Switch id="dots-gradient-switch" checked={dotsGradient.enabled} onCheckedChange={(c) => setDotsGradient(p => ({...p, enabled: c}))} />
+                           <Label htmlFor="dots-gradient-switch">Use Gradient</Label>
+                        </div>
+                        {dotsGradient.enabled ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border p-4 rounded-md">
+                                <ColorInput label="Color 1" value={dotsGradient.color1} onChange={(e) => setDotsGradient(p => ({ ...p, color1: e.target.value }))} />
+                                <ColorInput label="Color 2" value={dotsGradient.color2} onChange={(e) => setDotsGradient(p => ({ ...p, color2: e.target.value }))} />
+                                <div className="grid gap-2">
+                                    <Label>Type</Label>
+                                    <Select value={dotsGradient.type} onValueChange={(v: 'linear' | 'radial') => setDotsGradient(p => ({ ...p, type: v }))}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="linear">Linear</SelectItem>
+                                            <SelectItem value="radial">Radial</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Rotation: {dotsGradient.rotation}°</Label>
+                                    <Slider value={[dotsGradient.rotation]} onValueChange={(v) => setDotsGradient(p => ({ ...p, rotation: v[0] }))} min={0} max={360} step={1} />
+                                </div>
+                            </div>
+                        ) : (
+                            <ColorInput label="Foreground" value={qrOptions.dotsOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('dotsOptions', { color: e.target.value })} className="mt-4" />
+                        )}
+                    </div>
+                    <Separator/>
+                     <div>
+                        <Label className="font-medium text-base">Background</Label>
+                        <div className="flex items-center space-x-2 mt-2">
+                           <Switch id="bg-gradient-switch" checked={backgroundGradient.enabled} onCheckedChange={(c) => setBackgroundGradient(p => ({...p, enabled: c}))} />
+                           <Label htmlFor="bg-gradient-switch">Use Gradient</Label>
+                        </div>
+                        {backgroundGradient.enabled ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border p-4 rounded-md">
+                                <ColorInput label="Color 1" value={backgroundGradient.color1} onChange={(e) => setBackgroundGradient(p => ({ ...p, color1: e.target.value }))} />
+                                <ColorInput label="Color 2" value={backgroundGradient.color2} onChange={(e) => setBackgroundGradient(p => ({ ...p, color2: e.target.value }))} />
+                                <div className="grid gap-2">
+                                    <Label>Type</Label>
+                                    <Select value={backgroundGradient.type} onValueChange={(v: 'linear' | 'radial') => setBackgroundGradient(p => ({ ...p, type: v }))}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="linear">Linear</SelectItem>
+                                            <SelectItem value="radial">Radial</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Rotation: {backgroundGradient.rotation}°</Label>
+                                    <Slider value={[backgroundGradient.rotation]} onValueChange={(v) => setBackgroundGradient(p => ({ ...p, rotation: v[0] }))} min={0} max={360} step={1} />
+                                </div>
+                            </div>
+                        ) : (
+                           <ColorInput label="Background" value={qrOptions.backgroundOptions?.color ?? '#ffffff'} onChange={(e) => updateNestedQrOptions('backgroundOptions', { color: e.target.value })} className="mt-4"/>
+                        )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
+                 <AccordionItem value="qr-style">
+                    <AccordionTrigger className="text-lg font-semibold">
+                        <div className="flex items-center"><ImageIcon className="mr-2 h-5 w-5 text-accent"/>QR Code Style</div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-4 space-y-4">
+                        <div className="grid gap-2">
+                            <Label>Dot Style</Label>
+                            <Select value={qrOptions.dotsOptions?.type} onValueChange={(v) => updateNestedQrOptions('dotsOptions', {type: v})}>
+                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="rounded">Rounded</SelectItem>
+                                    <SelectItem value="dots">Dots</SelectItem>
+                                    <SelectItem value="classy">Classy</SelectItem>
+                                    <SelectItem value="classy-rounded">Classy Rounded</SelectItem>
+                                    <SelectItem value="square">Square</SelectItem>
+                                    <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                             <div className="grid gap-2">
+                                <Label>Corner Square Style</Label>
+                                <Select value={qrOptions.cornersSquareOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersSquareOptions', {type: v})}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="dot">Dot</SelectItem>
+                                        <SelectItem value="square">Square</SelectItem>
+                                        <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Corner Dot Style</Label>
+                                <Select value={qrOptions.cornersDotOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersDotOptions', {type: v})}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="dot">Dot</SelectItem>
+                                        <SelectItem value="square">Square</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                 </AccordionItem>
+
+                 <AccordionItem value="logo">
+                     <AccordionTrigger className="text-lg font-semibold">
+                         <div className="flex items-center"><Upload className="mr-2 h-5 w-5 text-accent" /> Logo</div>
+                     </AccordionTrigger>
+                     <AccordionContent className="pt-4 space-y-4">
+                         <div className="grid gap-2">
+                            <Label htmlFor="logo-upload">Upload Logo</Label>
+                            <div className="flex items-center gap-2">
+                                <Input id="logo-upload" type="file" accept="image/*" onChange={handleLogoUpload} className="flex-grow"/>
+                                <Button variant="ghost" size="icon" onClick={() => setLogo(null)} disabled={!logo}>
+                                    <Trash2 className="h-4 w-4"/>
+                                </Button>
+                            </div>
+                         </div>
+                         {logo && (
+                             <div className="space-y-4 border-t pt-4">
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="hide-dots-switch" checked={qrOptions.imageOptions?.hideBackgroundDots} onCheckedChange={(c) => updateNestedQrOptions('imageOptions', { hideBackgroundDots: c })} />
+                                    <Label htmlFor="hide-dots-switch">Hide dots behind logo</Label>
+                                </div>
+                                 <div className="grid gap-2">
+                                    <Label>Logo Size: {Math.round((qrOptions.imageOptions?.imageSize ?? 0.4) * 100)}%</Label>
+                                    <Slider value={[(qrOptions.imageOptions?.imageSize ?? 0.4)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { imageSize: v[0] })} min={0.1} max={0.9} step={0.05} />
+                                 </div>
+                                 <div className="grid gap-2">
+                                    <Label>Logo Margin: {qrOptions.imageOptions?.margin ?? 0}px</Label>
+                                    <Slider value={[(qrOptions.imageOptions?.margin ?? 0)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { margin: v[0] })} min={0} max={20} step={1} />
+                                 </div>
+                             </div>
+                         )}
+                     </AccordionContent>
+                 </AccordionItem>
                 
                 <AccordionItem value="text-overlay">
                    <AccordionTrigger className="text-lg font-semibold">
@@ -1052,6 +1264,7 @@ export default function Home() {
                           <SelectItem value="H">High (Recovers ~30% of data)</SelectItem>
                         </SelectContent>
                       </Select>
+                      <p className="text-xs text-muted-foreground">Higher levels can recover more data but increase QR code density.</p>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -1123,3 +1336,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
