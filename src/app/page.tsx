@@ -528,7 +528,19 @@ export default function Home() {
                                   <AccordionTrigger className="py-2 text-base font-semibold">Position & Rotation</AccordionTrigger>
                                   <AccordionContent className="pt-2 space-y-4">
                                     <div className="grid gap-2">
-                                        <Label>Rotation: {activeOverlay.rotation}°</Label>
+                                        <div className="flex items-center justify-between">
+                                          <Label htmlFor="rotation-input">Rotation</Label>
+                                          <Input
+                                            id="rotation-input"
+                                            type="number"
+                                            className="w-20 h-8"
+                                            value={activeOverlay.rotation}
+                                            onChange={(e) => updateOverlay(activeOverlay.id, { rotation: parseInt(e.target.value, 10) || 0 })}
+                                            min={-180}
+                                            max={180}
+                                            step={1}
+                                          />
+                                        </div>
                                         <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
                                     </div>
                                   </AccordionContent>
@@ -699,5 +711,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
