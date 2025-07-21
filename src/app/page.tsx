@@ -87,6 +87,16 @@ const colorPresets = [
     { name: 'Royal', fg: '#f0e68c', bg: '#4b0082' },
     { name: 'Mint', fg: '#004d40', bg: '#b2dfdb' },
     { name: 'Rose', fg: '#831843', bg: '#fecdd3' },
+    { name: 'Sky', fg: '#0077b6', bg: '#ade8f4' },
+    { name: 'Cherry', fg: '#780000', bg: '#f8ad9d' },
+    { name: 'Gold', fg: '#ffd700', bg: '#212529' },
+    { name: 'Lavender', fg: '#4a4e69', bg: '#e0b1cb' },
+    { name: 'Olive', fg: '#556b2f', bg: '#f5f5dc' },
+    { name: 'Cyber', fg: '#00f7ff', bg: '#101010' },
+    { name: 'Peach', fg: '#e56b6f', bg: '#fff0f3' },
+    { name: 'Earth', fg: '#a0522d', bg: '#f4a460' },
+    { name: 'Slate', fg: '#f8f9fa', bg: '#343a40' },
+    { name: 'Ruby', fg: '#e01e37', bg: '#f9d5d5' },
 ];
 
 export default function Home() {
@@ -322,7 +332,7 @@ export default function Home() {
                      <Separator className="my-4" />
                       <div className="grid gap-3">
                         <Label>Color Presets</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        <div className="flex flex-wrap gap-2">
                             {colorPresets.map((preset) => (
                                 <button
                                     key={preset.name}
