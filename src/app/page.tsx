@@ -3,8 +3,8 @@
 
 import { useState, useEffect, useRef, type FC, useCallback } from "react";
 import Image from "next/image";
-import QRCode from "qrcode";
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Minus, Plus } from "lucide-react";
+import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Image as ImageIcon, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,8 +38,6 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Switch } from "@/components/ui/switch";
 
 const CANVAS_SIZE = 400;
-const QR_CODE_SIZE = 300;
-const QR_CODE_OFFSET = (CANVAS_SIZE - QR_CODE_SIZE) / 2;
 
 interface ColorInputProps {
   label: string;
@@ -129,12 +127,41 @@ const colorPresets = [
 
 export default function Home() {
   const [text, setText] = useState("https://firebase.google.com/");
-  const [foregroundColor, setForegroundColor] = useState("#000000");
-  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
-  const [errorCorrectionLevel, setErrorCorrectionLevel] = useState<QRCode.QRCodeErrorCorrectionLevel>("medium");
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
-  const [downloadFormat, setDownloadFormat] = useState("png");
+  const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
 
+  // QR Styling State
+  const [qrOptions, setQrOptions] = useState<QRCodeStylingOptions>({
+      width: CANVAS_SIZE,
+      height: CANVAS_SIZE,
+      margin: 20,
+      qrOptions: {
+          errorCorrectionLevel: "M",
+      },
+      dotsOptions: {
+          type: 'square',
+          color: '#000000',
+      },
+      backgroundOptions: {
+          color: '#ffffff',
+      },
+      cornersSquareOptions: {
+          type: 'square',
+          color: '#000000',
+      },
+      cornersDotOptions: {
+          type: 'square',
+          color: '#000000',
+      },
+      imageOptions: {
+          crossOrigin: 'anonymous',
+          margin: 10,
+      }
+  });
+  const [logo, setLogo] = useState<string | null>(null);
+
+  const qrCodeRef = useRef<QRCodeStyling | null>(null);
+  const qrWrapperRef = useRef<HTMLDivElement>(null);
+  
   // Text overlay state
   const [overlays, setOverlays] = useState<TextOverlay[]>([]);
   const [activeOverlayId, setActiveOverlayId] = useState<number | null>(null);
@@ -142,12 +169,25 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   const visibleCanvasRef = useRef<HTMLCanvasElement>(null);
   const dragCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const activeOverlay = overlays.find(o => o.id === activeOverlayId);
   
+  const updateQrOptions = (newOptions: Partial<QRCodeStylingOptions>) => {
+    setQrOptions(prev => ({...prev, ...newOptions}));
+  }
+
+  const updateNestedQrOptions = (category: keyof QRCodeStylingOptions, newOptions: any) => {
+      setQrOptions(prev => ({
+          ...prev,
+          [category]: {
+              ...(prev[category] as any),
+              ...newOptions
+          }
+      }));
+  }
+
   const updateOverlay = (id: number, updates: Partial<TextOverlay>) => {
       setOverlays(overlays.map(o => o.id === id ? { ...o, ...updates } : o));
   };
@@ -232,46 +272,67 @@ export default function Home() {
 
       ctx.restore();
   };
-
-  const drawCanvas = useCallback(async (excludeActive = false) => {
-    const canvas = visibleCanvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-
-    ctx.fillStyle = backgroundColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    if (text.trim() && qrCanvasRef.current) {
-        try {
-            const options: QRCode.QRCodeToCanvasOptions = {
-                errorCorrectionLevel,
-                margin: 2,
-                width: QR_CODE_SIZE,
-                color: {
-                    dark: foregroundColor,
-                    light: "#00000000",
-                },
-            };
-            await QRCode.toCanvas(qrCanvasRef.current, text, options);
-            ctx.drawImage(qrCanvasRef.current, QR_CODE_OFFSET, QR_CODE_OFFSET);
-        } catch (err) {
-            console.error("Failed to generate QR code:", err);
+  
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setLogo(event.target.result as string);
         }
+      };
+      reader.readAsDataURL(e.target.files[0]);
     }
+  };
 
-    overlays.forEach(overlay => {
-      if (excludeActive && overlay.id === activeOverlayId) return;
-      drawOverlay(ctx, overlay);
-    });
-    
-    setQrCodeDataUrl(canvas.toDataURL("image/png"));
-
-  }, [text, foregroundColor, backgroundColor, errorCorrectionLevel, overlays, activeOverlayId]);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => drawCanvas(), 300);
+    if (!qrCodeRef.current) {
+      qrCodeRef.current = new QRCodeStyling({
+        ...qrOptions,
+        data: text,
+        image: logo ?? undefined,
+      });
+      if (qrWrapperRef.current) {
+        qrCodeRef.current.append(qrWrapperRef.current);
+      }
+    } else {
+      qrCodeRef.current.update({
+        ...qrOptions,
+        data: text,
+        image: logo ?? undefined,
+      });
+    }
+  }, [text, qrOptions, logo]);
+
+  // Combined canvas drawing logic
+  const drawFinalCanvas = useCallback(async () => {
+    const canvas = visibleCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || !qrCodeRef.current) return;
+
+    // Get the QR code as a data URL from qr-code-styling
+    const qrDataUrl = await qrCodeRef.current.getDataUrl('png');
+    const qrImage = await new Promise<HTMLImageElement>(resolve => {
+        const img = new window.Image();
+        img.onload = () => resolve(img);
+        img.src = qrDataUrl;
+    });
+
+    // Clear canvas and draw QR code
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(qrImage, 0, 0, canvas.width, canvas.height);
+
+    // Draw all text overlays
+    overlays.forEach(overlay => {
+      drawOverlay(ctx, overlay);
+    });
+  }, [overlays]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => drawFinalCanvas(), 300);
     return () => clearTimeout(timeoutId);
-  }, [drawCanvas]);
+  }, [drawFinalCanvas, overlays]);
 
 
   const getEventCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -317,8 +378,7 @@ export default function Home() {
       if ('preventDefault' in e) e.preventDefault();
       setIsDragging(true);
       setDragStart({ x: mouseX - activeOverlay.position.x, y: mouseY - activeOverlay.position.y });
-      drawCanvas(true); // Redraw background without the active overlay
-
+      
       const dragCtx = dragCanvasRef.current?.getContext('2d');
       if(dragCtx){
           dragCtx.clearRect(0,0,CANVAS_SIZE, CANVAS_SIZE);
@@ -352,15 +412,9 @@ export default function Home() {
     setIsDragging(false);
 
     const coords = getEventCoordinates(e as React.MouseEvent<HTMLCanvasElement>); // Touches might not be available on touchend
-    if (!coords) { // Fallback to last known good position from state if coords are null
-      drawCanvas();
-      return;
-    };
-    
-    const { x: mouseX, y: mouseY } = coords;
      const newPosition = {
-        x: mouseX - dragStart.x,
-        y: mouseY - dragStart.y,
+        x: (coords?.x ?? activeOverlay.position.x + dragStart.x) - dragStart.x,
+        y: (coords?.y ?? activeOverlay.position.y + dragStart.y) - dragStart.y,
     };
 
     updateOverlay(activeOverlay.id, { position: newPosition });
@@ -369,13 +423,37 @@ export default function Home() {
     if (dragCtx) {
       dragCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     }
-    // The main canvas will be redrawn by the useEffect watching `overlays`
   };
   
-  const handleDownload = () => {
-    if (!visibleCanvasRef.current) return;
+  const handleDownload = async () => {
+    if (!qrCodeRef.current || !visibleCanvasRef.current) return;
+
+    // Use a temporary canvas to merge QR code and overlays for download
+    const downloadCanvas = document.createElement('canvas');
+    downloadCanvas.width = CANVAS_SIZE;
+    downloadCanvas.height = CANVAS_SIZE;
+    const ctx = downloadCanvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Get the QR code image (without overlays)
+    const qrInstanceForDownload = new QRCodeStyling({
+      ...qrOptions,
+      data: text,
+      image: logo ?? undefined,
+    });
+    const qrDataUrl = await qrInstanceForDownload.getDataUrl('png');
+    const qrImage = await new Promise<HTMLImageElement>(resolve => {
+        const img = new window.Image();
+        img.onload = () => resolve(img);
+        img.src = qrDataUrl;
+    });
+
+    // Draw QR code and overlays
+    ctx.drawImage(qrImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    overlays.forEach(o => drawOverlay(ctx, o));
+
     const mimeType = downloadFormat === "jpeg" ? "image/jpeg" : "image/png";
-    const downloadUrl = visibleCanvasRef.current.toDataURL(mimeType, 1.0);
+    const downloadUrl = downloadCanvas.toDataURL(mimeType, 1.0);
 
     const link = document.createElement("a");
     link.href = downloadUrl;
@@ -386,8 +464,10 @@ export default function Home() {
   };
   
   const handlePresetClick = (fg: string, bg: string) => {
-    setForegroundColor(fg);
-    setBackgroundColor(bg);
+    updateNestedQrOptions('dotsOptions', { color: fg });
+    updateNestedQrOptions('backgroundOptions', { color: bg });
+    updateNestedQrOptions('cornersSquareOptions', { color: fg });
+    updateNestedQrOptions('cornersDotOptions', { color: fg });
   };
 
   return (
@@ -416,7 +496,55 @@ export default function Home() {
                 />
               </div>
 
-              <Accordion type="multiple" defaultValue={['colors']} className="w-full">
+              <Accordion type="multiple" defaultValue={['style']} className="w-full">
+                <AccordionItem value="style">
+                    <AccordionTrigger className="text-lg font-semibold">
+                      <div className="flex items-center">
+                        <Sparkles className="mr-2 h-5 w-5 text-accent" />
+                        QR Code Style
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-4 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label>Dots Style</Label>
+                                <Select value={qrOptions.dotsOptions?.type} onValueChange={(v) => updateNestedQrOptions('dotsOptions', {type: v})}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="square">Square</SelectItem>
+                                        <SelectItem value="dots">Dots</SelectItem>
+                                        <SelectItem value="rounded">Rounded</SelectItem>
+                                        <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
+                                        <SelectItem value="classy">Classy</SelectItem>
+                                        <SelectItem value="classy-rounded">Classy Rounded</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Corner Eye Style</Label>
+                                <Select value={qrOptions.cornersSquareOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersSquareOptions', {type: v})}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="square">Square</SelectItem>
+                                        <SelectItem value="dot">Dot</SelectItem>
+                                        <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Logo Image</Label>
+                            <div className="flex items-center gap-2">
+                                <Input id="logo-upload" type="file" accept="image/*" onChange={handleLogoUpload} className="flex-grow"/>
+                                {logo && (
+                                    <Button variant="ghost" size="icon" onClick={() => setLogo(null)}>
+                                        <Trash2 className="h-4 w-4"/>
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
                 <AccordionItem value="colors">
                   <AccordionTrigger className="text-lg font-semibold">
                     <div className="flex items-center">
@@ -428,13 +556,17 @@ export default function Home() {
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <ColorInput
                         label="Foreground"
-                        value={foregroundColor}
-                        onChange={(e) => setForegroundColor(e.target.value)}
+                        value={qrOptions.dotsOptions?.color ?? '#000000'}
+                        onChange={(e) => {
+                            updateNestedQrOptions('dotsOptions', { color: e.target.value });
+                            updateNestedQrOptions('cornersSquareOptions', { color: e.target.value });
+                            updateNestedQrOptions('cornersDotOptions', { color: e.target.value });
+                        }}
                       />
                       <ColorInput
                         label="Background"
-                        value={backgroundColor}
-                        onChange={(e) => setBackgroundColor(e.target.value)}
+                        value={qrOptions.backgroundOptions?.color ?? '#ffffff'}
+                        onChange={(e) => updateNestedQrOptions('backgroundOptions', { color: e.target.value })}
                       />
                     </div>
                     <Accordion type="single" collapsible className="w-full">
@@ -654,19 +786,19 @@ export default function Home() {
                         Error Correction Level
                       </Label>
                       <Select
-                        value={errorCorrectionLevel}
+                        value={qrOptions.qrOptions?.errorCorrectionLevel}
                         onValueChange={(v) =>
-                          setErrorCorrectionLevel(v as QRCode.QRCodeErrorCorrectionLevel)
+                          updateNestedQrOptions('qrOptions', { errorCorrectionLevel: v })
                         }
                       >
                         <SelectTrigger id="error-correction" className="w-full">
                           <SelectValue placeholder="Select level" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="low">Low (Recovers ~7% of data)</SelectItem>
-                          <SelectItem value="medium">Medium (Recovers ~15% of data)</SelectItem>
-                          <SelectItem value="quartile">Quartile (Recovers ~25% of data)</SelectItem>
-                          <SelectItem value="high">High (Recovers ~30% of data)</SelectItem>
+                          <SelectItem value="L">Low (Recovers ~7% of data)</SelectItem>
+                          <SelectItem value="M">Medium (Recovers ~15% of data)</SelectItem>
+                          <SelectItem value="Q">Quartile (Recovers ~25% of data)</SelectItem>
+                          <SelectItem value="H">High (Recovers ~30% of data)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -679,21 +811,23 @@ export default function Home() {
               <div
                 className="relative flex w-full max-w-[400px] items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner aspect-square"
                 style={{touchAction: 'none'}}
-                onMouseUp={handleDragEnd}
-                onMouseLeave={handleDragEnd}
-                onTouchEnd={handleDragEnd}
-                onMouseMove={handleDragMove}
-                onTouchMove={handleDragMove}
               >
-                <canvas
+                 <div ref={qrWrapperRef} className="absolute inset-0" />
+                 {/* Visible canvas for overlay interaction */}
+                 <canvas
                     ref={visibleCanvasRef}
                     width={CANVAS_SIZE}
                     height={CANVAS_SIZE}
-                    className="absolute top-0 left-0 rounded-lg w-full h-full"
-                    style={{backgroundColor: backgroundColor}}
+                    className="absolute top-0 left-0 rounded-lg w-full h-full opacity-0" // Kept for size and mouse events
                     onMouseDown={handleDragStart}
                     onTouchStart={handleDragStart}
+                    onMouseMove={handleDragMove}
+                    onTouchMove={handleDragMove}
+                    onMouseUp={handleDragEnd}
+                    onMouseLeave={handleDragEnd}
+                    onTouchEnd={handleDragEnd}
                  />
+                 {/* Dragging canvas for smooth feedback */}
                  <canvas
                     ref={dragCanvasRef}
                     width={CANVAS_SIZE}
@@ -724,7 +858,7 @@ export default function Home() {
             </Label>
             <Select
               value={downloadFormat}
-              onValueChange={setDownloadFormat}
+              onValueChange={(v) => setDownloadFormat(v as FileExtension)}
             >
               <SelectTrigger id="format-select" className="flex-grow sm:w-[120px]">
                 <SelectValue placeholder="Format" />
@@ -732,12 +866,13 @@ export default function Home() {
               <SelectContent>
                 <SelectItem value="png">PNG</SelectItem>
                 <SelectItem value="jpeg">JPG</SelectItem>
+                <SelectItem value="svg">SVG</SelectItem>
+                <SelectItem value="webp">WEBP</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <Button
             onClick={handleDownload}
-            disabled={!qrCodeDataUrl}
             size="lg"
             className="w-full sm:w-auto"
           >
@@ -746,7 +881,6 @@ export default function Home() {
           </Button>
         </CardFooter>
       </Card>
-      <canvas ref={qrCanvasRef} width={QR_CODE_SIZE} height={QR_CODE_SIZE} style={{ display: "none" }} />
     </main>
   );
 }
