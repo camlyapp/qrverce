@@ -545,6 +545,10 @@ export default function Home() {
 
       return () => clearTimeout(timeoutId);
   }, [qrContent, qrOptions, logo, overlays, dotsGradient, backgroundGradient]);
+  
+  useEffect(() => {
+    drawAllLayers();
+  }, [overlays]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -1188,8 +1192,9 @@ export default function Home() {
                        <div className="grid gap-4 border-t pt-4">
                            <div className="flex items-end gap-2">
                              <div className="grid gap-2 flex-grow">
-                                <Label>Text</Label>
+                                <Label htmlFor={`text-overlay-input-${activeOverlay.id}`}>Text</Label>
                                 <Input
+                                    id={`text-overlay-input-${activeOverlay.id}`}
                                     placeholder="Your text here..."
                                     value={activeOverlay.text}
                                     onChange={(e) => updateOverlay(activeOverlay.id, {text: e.target.value})}
@@ -1200,32 +1205,36 @@ export default function Home() {
                                  <span className="sr-only">Delete overlay</span>
                              </Button>
                            </div>
-                           <div className="grid grid-cols-2 gap-4">
-                             <ColorInput
-                               label="Text Color"
-                               value={activeOverlay.color}
-                               onChange={(e) => updateOverlay(activeOverlay.id, {color: e.target.value})}
-                             />
-                             <div className="grid gap-2">
-                               <Label>Font</Label>
-                               <Select value={activeOverlay.fontFamily} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontFamily: v})}>
-                                 <SelectTrigger><SelectValue /></SelectTrigger>
-                                 <SelectContent>
-                                   <SelectItem value="Inter">Inter</SelectItem>
-                                   <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
-                                   <SelectItem value="Arial">Arial</SelectItem>
-                                   <SelectItem value="Courier New">Courier New</SelectItem>
-                                   <SelectItem value="Verdana">Verdana</SelectItem>
-                                 </SelectContent>
-                               </Select>
-                             </div>
-                           </div>
-                           <div className="grid gap-2">
-                              <Label>Font Size: {activeOverlay.fontSize}px</Label>
-                              <Slider value={[activeOverlay.fontSize]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0]})} min={10} max={80} step={1} />
-                           </div>
-                            <div className="grid grid-cols-2 gap-4">
-                               <div className="grid gap-2">
+                           
+                           <Separator />
+
+                           <div>
+                                <h4 className="text-sm font-medium mb-3">Font & Style</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                 <div className="grid gap-2">
+                                   <Label>Font</Label>
+                                   <Select value={activeOverlay.fontFamily} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontFamily: v})}>
+                                     <SelectTrigger><SelectValue /></SelectTrigger>
+                                     <SelectContent>
+                                       <SelectItem value="Inter">Inter</SelectItem>
+                                       <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
+                                       <SelectItem value="Arial">Arial</SelectItem>
+                                       <SelectItem value="Courier New">Courier New</SelectItem>
+                                       <SelectItem value="Verdana">Verdana</SelectItem>
+                                     </SelectContent>
+                                   </Select>
+                                 </div>
+                                  <ColorInput
+                                   label="Color"
+                                   value={activeOverlay.color}
+                                   onChange={(e) => updateOverlay(activeOverlay.id, {color: e.target.value})}
+                                 />
+                               </div>
+                                <div className="grid gap-2 mt-4">
+                                  <Label>Font Size: {activeOverlay.fontSize}px</Label>
+                                  <Slider value={[activeOverlay.fontSize]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0]})} min={10} max={80} step={1} />
+                               </div>
+                                <div className="grid gap-2 mt-4">
                                  <Label>Style</Label>
                                  <ToggleGroup type="multiple" value={[activeOverlay.fontWeight, activeOverlay.fontStyle].filter(s => s !== 'normal')} onValueChange={(value) => {
                                    updateOverlay(activeOverlay.id, {
@@ -1237,18 +1246,26 @@ export default function Home() {
                                    <ToggleGroupItem value="italic" aria-label="Toggle italic"><Italic className="h-4 w-4" /></ToggleGroupItem>
                                  </ToggleGroup>
                                </div>
-                               <div className="grid gap-2">
-                                 <Label>Alignment</Label>
-                                 <ToggleGroup type="single" value={activeOverlay.textAlign} onValueChange={(value: TextOverlay['textAlign']) => value && updateOverlay(activeOverlay.id, {textAlign: value})}>
-                                   <ToggleGroupItem value="left" aria-label="Align left"><AlignLeft className="h-4 w-4" /></ToggleGroupItem>
-                                   <ToggleGroupItem value="center" aria-label="Align center"><AlignCenter className="h-4 w-4" /></ToggleGroupItem>
-                                   <ToggleGroupItem value="right" aria-label="Align right"><AlignRight className="h-4 w-4" /></ToggleGroupItem>
-                                 </ToggleGroup>
+                           </div>
+                            
+                            <Separator />
+                            
+                           <div>
+                               <h4 className="text-sm font-medium mb-3">Layout</h4>
+                               <div className="grid grid-cols-1 gap-4">
+                                   <div className="grid gap-2">
+                                     <Label>Alignment</Label>
+                                     <ToggleGroup type="single" value={activeOverlay.textAlign} onValueChange={(value: TextOverlay['textAlign']) => value && updateOverlay(activeOverlay.id, {textAlign: value})}>
+                                       <ToggleGroupItem value="left" aria-label="Align left"><AlignLeft className="h-4 w-4" /></ToggleGroupItem>
+                                       <ToggleGroupItem value="center" aria-label="Align center"><AlignCenter className="h-4 w-4" /></ToggleGroupItem>
+                                       <ToggleGroupItem value="right" aria-label="Align right"><AlignRight className="h-4 w-4" /></ToggleGroupItem>
+                                     </ToggleGroup>
+                                   </div>
+                                   <div className="grid gap-2">
+                                      <Label>Rotation: {activeOverlay.rotation}°</Label>
+                                      <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
+                                   </div>
                                </div>
-                            </div>
-                           <div className="grid gap-2">
-                              <Label>Rotation</Label>
-                              <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
                            </div>
                        </div>
                      ) : (
