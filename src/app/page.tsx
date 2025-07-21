@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +37,10 @@ import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 const CANVAS_SIZE = 400;
 
@@ -94,6 +98,42 @@ const vCardInitialState = {
   address: ''
 };
 
+const wifiInitialState = {
+  ssid: '',
+  password: '',
+  encryption: 'WPA',
+  hidden: false,
+};
+
+const phoneInitialState = {
+  phone: '',
+};
+
+const smsInitialState = {
+  phone: '',
+  message: '',
+};
+
+const emailInitialState = {
+  email: '',
+  subject: '',
+  body: '',
+};
+
+const geoInitialState = {
+  latitude: '',
+  longitude: '',
+};
+
+const eventInitialState = {
+  summary: '',
+  location: '',
+  description: '',
+  startDate: new Date(),
+  endDate: new Date(new Date().getTime() + 60 * 60 * 1000),
+};
+
+
 const generateVCardString = (vCardData: typeof vCardInitialState): string => {
   const parts = [
     'BEGIN:VCARD',
@@ -111,6 +151,39 @@ const generateVCardString = (vCardData: typeof vCardInitialState): string => {
   return parts.filter(Boolean).join('\n');
 };
 
+const generateWifiString = (wifiData: typeof wifiInitialState): string => {
+  const passwordPart = wifiData.password ? `P:${wifiData.password};` : '';
+  const hiddenPart = wifiData.hidden ? 'H:true;' : '';
+  return `WIFI:T:${wifiData.encryption};S:${wifiData.ssid};${passwordPart}${hiddenPart};`;
+};
+
+const generatePhoneString = (phoneData: typeof phoneInitialState): string => `tel:${phoneData.phone}`;
+const generateSmsString = (smsData: typeof smsInitialState): string => `SMSTO:${smsData.phone}:${smsData.message}`;
+const generateEmailString = (emailData: typeof emailInitialState): string => {
+  const subject = encodeURIComponent(emailData.subject);
+  const body = encodeURIComponent(emailData.body);
+  return `mailto:${emailData.email}?subject=${subject}&body=${body}`;
+};
+const generateGeoString = (geoData: typeof geoInitialState): string => `geo:${geoData.latitude},${geoData.longitude}`;
+
+const formatEventDate = (date: Date) => {
+  return format(date, "yyyyMMdd'T'HHmmss'Z'").replace(/[-:]/g, '');
+};
+
+const generateEventString = (eventData: typeof eventInitialState): string => {
+  const parts = [
+    'BEGIN:VEVENT',
+    `SUMMARY:${eventData.summary}`,
+    `LOCATION:${eventData.location}`,
+    `DESCRIPTION:${eventData.description}`,
+    `DTSTART:${formatEventDate(eventData.startDate)}`,
+    `DTEND:${formatEventDate(eventData.endDate)}`,
+    'END:VEVENT'
+  ];
+  return `BEGIN:VCALENDAR\nVERSION:2.0\n${parts.join('\n')}\nEND:VCALENDAR`;
+};
+
+
 export default function Home() {
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
   const [foregroundColor, setForegroundColor] = useState("#000000");
@@ -118,8 +191,16 @@ export default function Home() {
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
   
   const [activeTab, setActiveTab] = useState('text');
-  const [vCardData, setVCardData] = useState(vCardInitialState);
+  
+  // States for different QR types
   const [textData, setTextData] = useState("https://firebase.google.com/");
+  const [vCardData, setVCardData] = useState(vCardInitialState);
+  const [wifiData, setWifiData] = useState(wifiInitialState);
+  const [phoneData, setPhoneData] = useState(phoneInitialState);
+  const [smsData, setSmsData] = useState(smsInitialState);
+  const [emailData, setEmailData] = useState(emailInitialState);
+  const [geoData, setGeoData] = useState(geoInitialState);
+  const [eventData, setEventData] = useState(eventInitialState);
 
   const [qrOptions, setQrOptions] = useState<QRCodeStylingOptions>({
       width: CANVAS_SIZE,
@@ -220,9 +301,35 @@ export default function Home() {
   
 
   useEffect(() => {
-    const newContent = activeTab === 'vcard' ? generateVCardString(vCardData) : textData;
+    let newContent = "";
+    switch(activeTab) {
+      case 'text':
+        newContent = textData;
+        break;
+      case 'vcard':
+        newContent = generateVCardString(vCardData);
+        break;
+      case 'wifi':
+        newContent = generateWifiString(wifiData);
+        break;
+      case 'phone':
+        newContent = generatePhoneString(phoneData);
+        break;
+      case 'sms':
+        newContent = generateSmsString(smsData);
+        break;
+      case 'email':
+        newContent = generateEmailString(emailData);
+        break;
+      case 'geo':
+        newContent = generateGeoString(geoData);
+        break;
+      case 'event':
+        newContent = generateEventString(eventData);
+        break;
+    }
     setQrContent(newContent);
-  }, [activeTab, vCardData, textData]);
+  }, [activeTab, textData, vCardData, wifiData, phoneData, smsData, emailData, geoData, eventData]);
 
 
   useEffect(() => {
@@ -257,11 +364,19 @@ export default function Home() {
     const mouseY = e.clientY - rect.top;
 
     const clickedOverlay = overlays.find(overlay => {
-        const textMetrics = document.createElement('canvas').getContext('2d')!.measureText(overlay.text);
+        const textMetrics = document.createElement('canvas').getContext('2d')!;
+        textMetrics.font = `${overlay.fontStyle} ${overlay.fontWeight} ${overlay.fontSize}px "${overlay.fontFamily}"`;
+        const width = textMetrics.measureText(overlay.text).width;
+        
         // This is a simplified hit-detection that doesn't account for rotation.
+        const halfWidth = width / 2;
+        const halfHeight = overlay.fontSize / 2;
+
         return (
-            Math.abs(mouseX - overlay.position.x) < textMetrics.width / 2 &&
-            Math.abs(mouseY - overlay.position.y) < overlay.fontSize / 2
+            mouseX >= overlay.position.x - halfWidth &&
+            mouseX <= overlay.position.x + halfWidth &&
+            mouseY >= overlay.position.y - halfHeight &&
+            mouseY <= overlay.position.y + halfHeight
         )
     });
 
@@ -310,9 +425,32 @@ export default function Home() {
   };
   
   const handleVCardChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setVCardData(prev => ({ ...prev, [name]: value }));
+    setVCardData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
+
+  const handleWifiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWifiData(prev => ({...prev, [e.target.name]: e.target.value}));
+  }
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhoneData(prev => ({...prev, [e.target.name]: e.target.value}));
+  }
+
+  const handleSmsChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setSmsData(prev => ({...prev, [e.target.name]: e.target.value}));
+  }
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setEmailData(prev => ({...prev, [e.target.name]: e.target.value}));
+  }
+
+  const handleGeoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setGeoData(prev => ({...prev, [e.target.name]: e.target.value}));
+  }
+  
+  const handleEventChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setEventData(prev => ({...prev, [e.target.name]: e.target.value}));
+  }
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-6 md:p-8">
@@ -329,17 +467,21 @@ export default function Home() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-8">
             <div className="flex flex-col gap-6 lg:col-span-2">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="text">
-                    <Type className="mr-2 h-4 w-4"/>
-                    URL / Text
-                  </TabsTrigger>
-                  <TabsTrigger value="vcard">
-                    <Contact className="mr-2 h-4 w-4"/>
-                    vCard
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="text" className="pt-4">
+                <ScrollArea className="w-full whitespace-nowrap rounded-md">
+                    <TabsList className="w-max">
+                        <TabsTrigger value="text"><Type className="mr-2 h-4 w-4"/>URL/Text</TabsTrigger>
+                        <TabsTrigger value="vcard"><Contact className="mr-2 h-4 w-4"/>vCard</TabsTrigger>
+                        <TabsTrigger value="wifi"><Wifi className="mr-2 h-4 w-4"/>WiFi</TabsTrigger>
+                        <TabsTrigger value="phone"><Phone className="mr-2 h-4 w-4"/>Phone</TabsTrigger>
+                        <TabsTrigger value="sms"><MessageSquare className="mr-2 h-4 w-4"/>SMS</TabsTrigger>
+                        <TabsTrigger value="email"><Mail className="mr-2 h-4 w-4"/>Email</TabsTrigger>
+                        <TabsTrigger value="geo"><MapPin className="mr-2 h-4 w-4"/>Location</TabsTrigger>
+                        <TabsTrigger value="event"><CalendarIcon className="mr-2 h-4 w-4"/>Event</TabsTrigger>
+                    </TabsList>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+                <div className="mt-4 max-h-[400px] overflow-y-auto pr-2">
+                <TabsContent value="text">
                     <div className="grid gap-2">
                       <Label htmlFor="text-input" className="font-medium">
                         URL or Text to Encode
@@ -352,7 +494,7 @@ export default function Home() {
                       />
                     </div>
                 </TabsContent>
-                <TabsContent value="vcard" className="pt-4">
+                <TabsContent value="vcard">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="vcard-firstName">First Name</Label>
@@ -388,6 +530,112 @@ export default function Home() {
                     </div>
                   </div>
                 </TabsContent>
+                <TabsContent value="wifi">
+                    <div className="grid gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="wifi-ssid">Network Name (SSID)</Label>
+                            <Input id="wifi-ssid" name="ssid" value={wifiData.ssid} onChange={handleWifiChange}/>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="wifi-password">Password</Label>
+                            <Input id="wifi-password" name="password" type="password" value={wifiData.password} onChange={handleWifiChange}/>
+                        </div>
+                        <div className="grid gap-2">
+                           <Label htmlFor="wifi-encryption">Encryption</Label>
+                            <Select name="encryption" value={wifiData.encryption} onValueChange={(v) => setWifiData(p => ({...p, encryption: v}))}>
+                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="WPA">WPA/WPA2</SelectItem>
+                                    <SelectItem value="WEP">WEP</SelectItem>
+                                    <SelectItem value="nopass">None</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </TabsContent>
+                 <TabsContent value="phone">
+                    <div className="grid gap-2">
+                        <Label htmlFor="phone-number">Phone Number</Label>
+                        <Input id="phone-number" name="phone" type="tel" value={phoneData.phone} onChange={handlePhoneChange} placeholder="+15551234567"/>
+                    </div>
+                </TabsContent>
+                 <TabsContent value="sms">
+                     <div className="grid gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="sms-phone">Recipient Phone Number</Label>
+                            <Input id="sms-phone" name="phone" type="tel" value={smsData.phone} onChange={handleSmsChange} placeholder="+15551234567"/>
+                        </div>
+                         <div className="grid gap-2">
+                            <Label htmlFor="sms-message">Message</Label>
+                            <Textarea id="sms-message" name="message" value={smsData.message} onChange={handleSmsChange}/>
+                        </div>
+                    </div>
+                </TabsContent>
+                 <TabsContent value="email">
+                     <div className="grid gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="email-address">Recipient Email</Label>
+                            <Input id="email-address" name="email" type="email" value={emailData.email} onChange={handleEmailChange}/>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="email-subject">Subject</Label>
+                            <Input id="email-subject" name="subject" value={emailData.subject} onChange={handleEmailChange}/>
+                        </div>
+                         <div className="grid gap-2">
+                            <Label htmlFor="email-body">Body</Label>
+                            <Textarea id="email-body" name="body" value={emailData.body} onChange={handleEmailChange}/>
+                        </div>
+                    </div>
+                </TabsContent>
+                <TabsContent value="geo">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="geo-latitude">Latitude</Label>
+                            <Input id="geo-latitude" name="latitude" value={geoData.latitude} onChange={handleGeoChange}/>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="geo-longitude">Longitude</Label>
+                            <Input id="geo-longitude" name="longitude" value={geoData.longitude} onChange={handleGeoChange}/>
+                        </div>
+                    </div>
+                </TabsContent>
+                <TabsContent value="event">
+                    <div className="grid gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="event-summary">Event Title</Label>
+                            <Input id="event-summary" name="summary" value={eventData.summary} onChange={handleEventChange}/>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="event-location">Location</Label>
+                            <Input id="event-location" name="location" value={eventData.location} onChange={handleEventChange}/>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="event-description">Description</Label>
+                            <Textarea id="event-description" name="description" value={eventData.description} onChange={handleEventChange}/>
+                        </div>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label>Start Date</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline">{format(eventData.startDate, 'PPP')}</Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={eventData.startDate} onSelect={(d) => d && setEventData(p => ({...p, startDate: d}))} initialFocus/></PopoverContent>
+                                </Popover>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>End Date</Label>
+                                 <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline">{format(eventData.endDate, 'PPP')}</Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={eventData.endDate} onSelect={(d) => d && setEventData(p => ({...p, endDate: d}))} initialFocus/></PopoverContent>
+                                </Popover>
+                            </div>
+                        </div>
+                    </div>
+                </TabsContent>
+                </div>
               </Tabs>
 
 
@@ -611,3 +859,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
