@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, type FC, useCallback } from "react";
@@ -326,7 +327,7 @@ export default function Home() {
                       Customize Colors
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pt-4">
+                  <AccordionContent className="pt-4 space-y-4">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <ColorInput
                         label="Foreground"
@@ -339,26 +340,29 @@ export default function Home() {
                         onChange={(e) => setBackgroundColor(e.target.value)}
                       />
                     </div>
-                     <Separator className="my-4" />
-                      <div className="grid gap-3">
-                        <Label>Color Presets</Label>
-                        <div className="flex flex-wrap gap-2">
-                            {colorPresets.map((preset) => (
-                                <button
-                                    key={preset.name}
-                                    title={preset.name}
-                                    onClick={() => handlePresetClick(preset.fg, preset.bg)}
-                                    className="flex flex-col items-center justify-center gap-1.5 rounded-md border p-2 transition-all hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring"
-                                >
-                                    <div className="flex -space-x-2">
-                                        <div className="h-6 w-6 rounded-full border-2 border-white dark:border-black" style={{ backgroundColor: preset.fg }} />
-                                        <div className="h-6 w-6 rounded-full border-2 border-white dark:border-black" style={{ backgroundColor: preset.bg }} />
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">{preset.name}</span>
-                                </button>
-                            ))}
-                        </div>
-                      </div>
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="presets">
+                         <AccordionTrigger className="text-base font-semibold">Color Presets</AccordionTrigger>
+                         <AccordionContent className="pt-4">
+                           <div className="flex flex-wrap gap-2">
+                               {colorPresets.map((preset) => (
+                                   <button
+                                       key={preset.name}
+                                       title={preset.name}
+                                       onClick={() => handlePresetClick(preset.fg, preset.bg)}
+                                       className="flex flex-col items-center justify-center gap-1.5 rounded-md border p-2 transition-all hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring"
+                                   >
+                                       <div className="flex -space-x-2">
+                                           <div className="h-6 w-6 rounded-full border-2 border-white dark:border-black" style={{ backgroundColor: preset.fg }} />
+                                           <div className="h-6 w-6 rounded-full border-2 border-white dark:border-black" style={{ backgroundColor: preset.bg }} />
+                                       </div>
+                                       <span className="text-xs text-muted-foreground">{preset.name}</span>
+                                   </button>
+                               ))}
+                           </div>
+                         </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
                   </AccordionContent>
                 </AccordionItem>
                 
