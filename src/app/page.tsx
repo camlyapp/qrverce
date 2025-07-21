@@ -97,6 +97,16 @@ const colorPresets = [
     { name: 'Earth', fg: '#a0522d', bg: '#f4a460' },
     { name: 'Slate', fg: '#f8f9fa', bg: '#343a40' },
     { name: 'Ruby', fg: '#e01e37', bg: '#f9d5d5' },
+    { name: 'Teal', fg: '#20c997', bg: '#e9ecef' },
+    { name: 'Indigo', fg: '#e0cffc', bg: '#3f007d' },
+    { name: 'Coral', fg: '#ff7f50', bg: '#f0fff0' },
+    { name: 'Grape', fg: '#6f2dbd', bg: '#dcd0ff' },
+    { name: 'Lime', fg: '#a7d129', bg: '#3e4444' },
+    { name: 'Aqua', fg: '#00ffff', bg: '#333333' },
+    { name: 'Mustard', fg: '#ffdb58', bg: '#61412d' },
+    { name: 'Plum', fg: '#ddbdfc', bg: '#2d004f' },
+    { name: 'Steel', fg: '#b0c4de', bg: '#2f4f4f' },
+    { name: 'Crimson', fg: '#f5f5f5', bg: '#dc143c' },
 ];
 
 export default function Home() {
