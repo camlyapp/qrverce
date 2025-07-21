@@ -257,7 +257,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-6 md:p-8">
-      <Card className="w-full max-w-4xl overflow-hidden rounded-xl shadow-2xl">
+      <Card className="w-full max-w-5xl overflow-hidden rounded-xl shadow-2xl">
         <CardHeader className="bg-card/50">
           <CardTitle className="font-headline text-3xl font-bold tracking-tight text-primary md:text-4xl">
             QRCodeMint
@@ -266,9 +266,9 @@ export default function Home() {
             Create, customize, and download your QR codes with ease.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-6 md:p-8">
-          <div className="grid gap-8 md:grid-cols-2">
-            <div className="flex flex-col gap-6">
+        <CardContent className="p-4 md:p-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-8">
+            <div className="flex flex-col gap-6 lg:col-span-2">
               <div className="grid gap-2">
                 <Label htmlFor="text-input" className="font-medium">
                   URL or Text to Encode
@@ -278,7 +278,6 @@ export default function Home() {
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder="e.g., https://example.com"
-                  className="text-base"
                 />
               </div>
 
@@ -318,7 +317,7 @@ export default function Home() {
                         <div className="grid gap-2">
                             <Label>Overlays</Label>
                              <Select value={activeOverlayId?.toString() ?? ""} onValueChange={(id) => setActiveOverlayId(Number(id))}>
-                               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Select an overlay..."/></SelectTrigger>
+                               <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select an overlay..."/></SelectTrigger>
                                <SelectContent>
                                 {overlays.map(o => <SelectItem key={o.id} value={o.id.toString()}>{o.text.substring(0, 20)}</SelectItem>)}
                                </SelectContent>
@@ -343,7 +342,7 @@ export default function Home() {
                                  <span className="sr-only">Delete overlay</span>
                              </Button>
                            </div>
-                           <div className="grid grid-cols-2 gap-4">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                              <ColorInput
                                label="Text Color"
                                value={activeOverlay.color}
@@ -415,15 +414,15 @@ export default function Home() {
               </Accordion>
             </div>
 
-            <div className="flex flex-col items-center justify-center gap-4">
+            <div className="flex flex-col items-center justify-center gap-4 lg:col-span-3">
               <div
-                className="relative flex aspect-square w-full max-w-[400px] items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner"
+                className="relative flex w-full max-w-[400px] items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner aspect-square"
               >
                 <canvas
                     ref={visibleCanvasRef}
                     width={CANVAS_SIZE}
                     height={CANVAS_SIZE}
-                    className={cn("rounded-lg", isDragging && "cursor-grabbing")}
+                    className={cn("rounded-lg w-full h-full", isDragging && "cursor-grabbing")}
                     onMouseDown={handleDragStart}
                     onMouseMove={handleDragMove}
                     onMouseUp={handleDragEnd}
@@ -435,7 +434,7 @@ export default function Home() {
                  />
               </div>
               {activeOverlay && (
-                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                 <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground sm:gap-4">
                     <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {position:{x:CANVAS_SIZE/2, y:CANVAS_SIZE/2}})}>
                         <Move className="mr-2 h-4 w-4" /> Reset Position
                     </Button>
@@ -447,8 +446,8 @@ export default function Home() {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col items-stretch gap-4 border-t bg-card/50 p-6 sm:flex-row sm:justify-end">
-          <div className="flex items-center gap-4">
+        <CardFooter className="flex flex-col items-stretch gap-4 border-t bg-card/50 p-4 sm:flex-row sm:justify-end md:p-6">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Label htmlFor="format-select" className="flex-shrink-0">
               Format:
             </Label>
@@ -480,3 +479,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
