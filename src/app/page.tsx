@@ -175,33 +175,61 @@ export default function Home() {
   }, [drawCanvas]);
 
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const getEventCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = visibleCanvasRef.current;
-    if (!canvas || !activeOverlay) return;
+    if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    let clientX, clientY;
 
-    const ctx = canvas.getContext('2d');
+    if ('touches' in e) {
+      if (e.touches.length === 0) return null;
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  };
+
+  const handleDragStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!activeOverlay) return;
+    
+    const coords = getEventCoordinates(e);
+    if (!coords) return;
+    
+    const { x: mouseX, y: mouseY } = coords;
+
+    const ctx = visibleCanvasRef.current?.getContext('2d');
     if (!ctx) return;
     
     ctx.font = `${activeOverlay.fontSize}px "${activeOverlay.fontFamily}"`;
     const textWidth = ctx.measureText(activeOverlay.text).width;
+    
+    // A bit more generous hit area
+    const hitBoxWidth = Math.max(textWidth, 44);
+    const hitBoxHeight = Math.max(activeOverlay.fontSize, 44);
+
 
     if (
-      Math.abs(mouseX - activeOverlay.position.x) < textWidth / 2 &&
-      Math.abs(mouseY - activeOverlay.position.y) < activeOverlay.fontSize / 2
+      Math.abs(mouseX - activeOverlay.position.x) < hitBoxWidth / 2 &&
+      Math.abs(mouseY - activeOverlay.position.y) < hitBoxHeight / 2
     ) {
+      if ('preventDefault' in e) e.preventDefault();
       setIsDragging(true);
       setDragStart({ x: mouseX - activeOverlay.position.x, y: mouseY - activeOverlay.position.y });
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !visibleCanvasRef.current || !activeOverlay) return;
-    const rect = visibleCanvasRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+  const handleDragMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !activeOverlay) return;
+    if ('preventDefault' in e) e.preventDefault();
+    
+    const coords = getEventCoordinates(e);
+    if (!coords) return;
+    const { x: mouseX, y: mouseY } = coords;
+    
     updateOverlay(activeOverlay.id, {
         position: {
             x: mouseX - dragStart.x,
@@ -210,14 +238,10 @@ export default function Home() {
     });
   };
 
-  const handleMouseUp = () => {
+  const handleDragEnd = () => {
     setIsDragging(false);
   };
   
-  const handleMouseLeave = () => {
-    setIsDragging(false);
-  };
-
   const handleDownload = () => {
     if (!visibleCanvasRef.current) return;
     const mimeType = downloadFormat === "jpeg" ? "image/jpeg" : "image/png";
@@ -400,11 +424,14 @@ export default function Home() {
                     width={CANVAS_SIZE}
                     height={CANVAS_SIZE}
                     className={cn("rounded-lg", isDragging && "cursor-grabbing")}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseLeave}
-                    style={{backgroundColor: backgroundColor}}
+                    onMouseDown={handleDragStart}
+                    onMouseMove={handleDragMove}
+                    onMouseUp={handleDragEnd}
+                    onMouseLeave={handleDragEnd}
+                    onTouchStart={handleDragStart}
+                    onTouchMove={handleDragMove}
+                    onTouchEnd={handleDragEnd}
+                    style={{backgroundColor: backgroundColor, touchAction: 'none'}}
                  />
               </div>
               {activeOverlay && (
