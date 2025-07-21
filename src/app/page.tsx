@@ -23,6 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
@@ -214,100 +220,113 @@ export default function Home() {
                 />
               </div>
 
-              <div className="grid gap-4 rounded-lg border p-4">
-                <h3 className="flex items-center text-lg font-semibold">
-                  <Palette className="mr-2 h-5 w-5 text-accent" />
-                  Customize Colors
-                </h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <ColorInput
-                    label="Foreground"
-                    value={foregroundColor}
-                    onChange={(e) => setForegroundColor(e.target.value)}
-                  />
-                  <ColorInput
-                    label="Background"
-                    value={backgroundColor}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid gap-4 rounded-lg border p-4">
-                 <h3 className="flex items-center text-lg font-semibold">
-                  <Type className="mr-2 h-5 w-5 text-accent" />
-                  Text Overlay
-                </h3>
-                <div className="grid gap-4">
-                    <Input
-                        placeholder="Your text here..."
-                        value={overlayText}
-                        onChange={(e) => setOverlayText(e.target.value)}
-                    />
-                    <div className="grid grid-cols-2 gap-4">
+              <Accordion type="multiple" defaultValue={['colors', 'text-overlay']} className="w-full">
+                <AccordionItem value="colors">
+                  <AccordionTrigger className="text-lg font-semibold">
+                    <div className="flex items-center">
+                      <Palette className="mr-2 h-5 w-5 text-accent" />
+                      Customize Colors
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <ColorInput
-                        label="Text Color"
-                        value={textColor}
-                        onChange={(e) => setTextColor(e.target.value)}
+                        label="Foreground"
+                        value={foregroundColor}
+                        onChange={(e) => setForegroundColor(e.target.value)}
                       />
-                       <div className="grid gap-2">
-                         <Label>Font</Label>
-                         <Select value={fontFamily} onValueChange={setFontFamily}>
-                           <SelectTrigger><SelectValue /></SelectTrigger>
-                           <SelectContent>
-                             <SelectItem value="Inter">Inter</SelectItem>
-                             <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
-                             <SelectItem value="Arial">Arial</SelectItem>
-                             <SelectItem value="Courier New">Courier New</SelectItem>
-                             <SelectItem value="Verdana">Verdana</SelectItem>
-                           </SelectContent>
-                         </Select>
-                       </div>
+                      <ColorInput
+                        label="Background"
+                        value={backgroundColor}
+                        onChange={(e) => setBackgroundColor(e.target.value)}
+                      />
                     </div>
-                     <div className="grid gap-2">
-                        <Label>Font Size: {fontSize}px</Label>
-                        <Slider value={[fontSize]} onValueChange={(v) => setFontSize(v[0])} min={10} max={80} step={1} />
+                  </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="text-overlay">
+                  <AccordionTrigger className="text-lg font-semibold">
+                    <div className="flex items-center">
+                      <Type className="mr-2 h-5 w-5 text-accent" />
+                      Text Overlay
                     </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-4">
+                    <div className="grid gap-4">
+                        <Input
+                            placeholder="Your text here..."
+                            value={overlayText}
+                            onChange={(e) => setOverlayText(e.target.value)}
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                          <ColorInput
+                            label="Text Color"
+                            value={textColor}
+                            onChange={(e) => setTextColor(e.target.value)}
+                          />
+                           <div className="grid gap-2">
+                             <Label>Font</Label>
+                             <Select value={fontFamily} onValueChange={setFontFamily}>
+                               <SelectTrigger><SelectValue /></SelectTrigger>
+                               <SelectContent>
+                                 <SelectItem value="Inter">Inter</SelectItem>
+                                 <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
+                                 <SelectItem value="Arial">Arial</SelectItem>
+                                 <SelectItem value="Courier New">Courier New</SelectItem>
+                                 <SelectItem value="Verdana">Verdana</SelectItem>
+                               </SelectContent>
+                             </Select>
+                           </div>
+                        </div>
+                         <div className="grid gap-2">
+                            <Label>Font Size: {fontSize}px</Label>
+                            <Slider value={[fontSize]} onValueChange={(v) => setFontSize(v[0])} min={10} max={80} step={1} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Rotation: {textRotation}°</Label>
+                            <Slider value={[textRotation]} onValueChange={(v) => setTextRotation(v[0])} min={-180} max={180} step={1} />
+                        </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="advanced">
+                  <AccordionTrigger className="text-lg font-semibold">
+                    <div className="flex items-center">
+                      <Settings2 className="mr-2 h-5 w-5 text-accent" />
+                      Advanced Settings
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-4">
                     <div className="grid gap-2">
-                        <Label>Rotation: {textRotation}°</Label>
-                        <Slider value={[textRotation]} onValueChange={(v) => setTextRotation(v[0])} min={-180} max={180} step={1} />
+                      <Label htmlFor="error-correction" className="font-medium">
+                        Error Correction Level
+                      </Label>
+                      <Select
+                        value={errorCorrectionLevel}
+                        onValueChange={(v) =>
+                          setErrorCorrectionLevel(v as QRCode.QRCodeErrorCorrectionLevel)
+                        }
+                      >
+                        <SelectTrigger id="error-correction" className="w-full">
+                          <SelectValue placeholder="Select level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low (Recovers ~7% of data)</SelectItem>
+                          <SelectItem value="medium">Medium (Recovers ~15% of data)</SelectItem>
+                          <SelectItem value="quartile">Quartile (Recovers ~25% of data)</SelectItem>
+                          <SelectItem value="high">High (Recovers ~30% of data)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                </div>
-              </div>
-
-
-              <div className="grid gap-4 rounded-lg border p-4">
-                 <h3 className="flex items-center text-lg font-semibold">
-                  <Settings2 className="mr-2 h-5 w-5 text-accent" />
-                  Advanced Settings
-                </h3>
-                <div className="grid gap-2">
-                  <Label htmlFor="error-correction" className="font-medium">
-                    Error Correction Level
-                  </Label>
-                  <Select
-                    value={errorCorrectionLevel}
-                    onValueChange={(v) =>
-                      setErrorCorrectionLevel(v as QRCode.QRCodeErrorCorrectionLevel)
-                    }
-                  >
-                    <SelectTrigger id="error-correction" className="w-full">
-                      <SelectValue placeholder="Select level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low (Recovers ~7% of data)</SelectItem>
-                      <SelectItem value="medium">Medium (Recovers ~15% of data)</SelectItem>
-                      <SelectItem value="quartile">Quartile (Recovers ~25% of data)</SelectItem>
-                      <SelectItem value="high">High (Recovers ~30% of data)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
 
             <div className="flex flex-col items-center justify-center gap-4">
               <div
-                className="relative flex aspect-square w-full max-w-[300px] items-center justify-center rounded-lg shadow-inner"
+                className="relative flex aspect-square w-full max-w-[300px] items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner"
               >
                 <canvas
                     ref={visibleCanvasRef}
