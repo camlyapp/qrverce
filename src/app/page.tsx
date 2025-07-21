@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +41,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const CANVAS_SIZE = 400;
 
@@ -98,6 +99,13 @@ const vCardInitialState = {
   address: ''
 };
 
+const meCardInitialState = {
+  name: '',
+  phone: '',
+  email: '',
+  website: '',
+};
+
 const wifiInitialState = {
   ssid: '',
   password: '',
@@ -133,6 +141,41 @@ const eventInitialState = {
   endDate: new Date(new Date().getTime() + 60 * 60 * 1000),
 };
 
+const whatsappInitialState = {
+  phone: '',
+  message: '',
+};
+
+const skypeInitialState = {
+  username: '',
+  action: 'chat',
+};
+
+const zoomInitialState = {
+  meetingId: '',
+  password: '',
+};
+
+const paypalInitialState = {
+  email: '',
+  itemName: '',
+  amount: '',
+  currency: 'USD',
+};
+
+const bitcoinInitialState = {
+  address: '',
+  amount: '',
+};
+
+const socialInitialState = {
+  username: '',
+};
+
+const plainTextInitialState = {
+  text: '',
+};
+
 
 const generateVCardString = (vCardData: typeof vCardInitialState): string => {
   const parts = [
@@ -149,6 +192,18 @@ const generateVCardString = (vCardData: typeof vCardInitialState): string => {
     'END:VCARD'
   ];
   return parts.filter(Boolean).join('\n');
+};
+
+const generateMeCardString = (meCardData: typeof meCardInitialState): string => {
+  const parts = [
+    'MECARD:',
+    meCardData.name ? `N:${meCardData.name};` : '',
+    meCardData.phone ? `TEL:${meCardData.phone};` : '',
+    meCardData.email ? `EMAIL:${meCardData.email};` : '',
+    meCardData.website ? `URL:${meCardData.website};` : '',
+    ';'
+  ];
+  return parts.join('');
 };
 
 const generateWifiString = (wifiData: typeof wifiInitialState): string => {
@@ -183,6 +238,14 @@ const generateEventString = (eventData: typeof eventInitialState): string => {
   return `BEGIN:VCALENDAR\nVERSION:2.0\n${parts.join('\n')}\nEND:VCALENDAR`;
 };
 
+const generateWhatsappString = (data: typeof whatsappInitialState) => `https://wa.me/${data.phone}?text=${encodeURIComponent(data.message)}`;
+const generateSkypeString = (data: typeof skypeInitialState) => `skype:${data.username}?${data.action}`;
+const generateZoomString = (data: typeof zoomInitialState) => `https://zoom.us/j/${data.meetingId}${data.password ? `?pwd=${data.password}` : ''}`;
+const generatePaypalString = (data: typeof paypalInitialState) => `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(data.email)}&item_name=${encodeURIComponent(data.itemName)}&amount=${data.amount}&currency_code=${data.currency}`;
+const generateBitcoinString = (data: typeof bitcoinInitialState) => `bitcoin:${data.address}${data.amount ? `?amount=${data.amount}` : ''}`;
+const generateTwitterString = (data: typeof socialInitialState) => `https://twitter.com/${data.username}`;
+const generateFacebookString = (data: typeof socialInitialState) => `https://facebook.com/${data.username}`;
+const generateInstagramString = (data: typeof socialInitialState) => `https://instagram.com/${data.username}`;
 
 export default function Home() {
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
@@ -195,12 +258,22 @@ export default function Home() {
   // States for different QR types
   const [textData, setTextData] = useState("https://firebase.google.com/");
   const [vCardData, setVCardData] = useState(vCardInitialState);
+  const [meCardData, setMeCardData] = useState(meCardInitialState);
   const [wifiData, setWifiData] = useState(wifiInitialState);
   const [phoneData, setPhoneData] = useState(phoneInitialState);
   const [smsData, setSmsData] = useState(smsInitialState);
   const [emailData, setEmailData] = useState(emailInitialState);
   const [geoData, setGeoData] = useState(geoInitialState);
   const [eventData, setEventData] = useState(eventInitialState);
+  const [whatsappData, setWhatsappData] = useState(whatsappInitialState);
+  const [skypeData, setSkypeData] = useState(skypeInitialState);
+  const [zoomData, setZoomData] = useState(zoomInitialState);
+  const [paypalData, setPaypalData] = useState(paypalInitialState);
+  const [bitcoinData, setBitcoinData] = useState(bitcoinInitialState);
+  const [twitterData, setTwitterData] = useState(socialInitialState);
+  const [facebookData, setFacebookData] = useState(socialInitialState);
+  const [instagramData, setInstagramData] = useState(socialInitialState);
+  const [plainTextData, setPlainTextData] = useState(plainTextInitialState);
 
   const [qrOptions, setQrOptions] = useState<QRCodeStylingOptions>({
       width: CANVAS_SIZE,
@@ -309,6 +382,9 @@ export default function Home() {
       case 'vcard':
         newContent = generateVCardString(vCardData);
         break;
+      case 'mecard':
+        newContent = generateMeCardString(meCardData);
+        break;
       case 'wifi':
         newContent = generateWifiString(wifiData);
         break;
@@ -327,9 +403,40 @@ export default function Home() {
       case 'event':
         newContent = generateEventString(eventData);
         break;
+      case 'whatsapp':
+        newContent = generateWhatsappString(whatsappData);
+        break;
+      case 'skype':
+        newContent = generateSkypeString(skypeData);
+        break;
+      case 'zoom':
+        newContent = generateZoomString(zoomData);
+        break;
+      case 'paypal':
+        newContent = generatePaypalString(paypalData);
+        break;
+      case 'bitcoin':
+        newContent = generateBitcoinString(bitcoinData);
+        break;
+      case 'twitter':
+        newContent = generateTwitterString(twitterData);
+        break;
+      case 'facebook':
+        newContent = generateFacebookString(facebookData);
+        break;
+      case 'instagram':
+        newContent = generateInstagramString(instagramData);
+        break;
+      case 'plaintext':
+        newContent = plainTextData.text;
+        break;
     }
     setQrContent(newContent);
-  }, [activeTab, textData, vCardData, wifiData, phoneData, smsData, emailData, geoData, eventData]);
+  }, [
+    activeTab, textData, vCardData, meCardData, wifiData, phoneData, smsData, 
+    emailData, geoData, eventData, whatsappData, skypeData, zoomData, 
+    paypalData, bitcoinData, twitterData, facebookData, instagramData, plainTextData
+  ]);
 
 
   useEffect(() => {
@@ -427,6 +534,10 @@ export default function Home() {
   const handleVCardChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setVCardData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
+  
+  const handleMeCardChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMeCardData(prev => ({...prev, [e.target.name]: e.target.value}));
+  }
 
   const handleWifiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setWifiData(prev => ({...prev, [e.target.name]: e.target.value}));
@@ -451,6 +562,15 @@ export default function Home() {
   const handleEventChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setEventData(prev => ({...prev, [e.target.name]: e.target.value}));
   }
+  
+  const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setWhatsappData(p => ({...p, [e.target.name]: e.target.value}));
+  const handleSkypeChange = (e: React.ChangeEvent<HTMLInputElement>) => setSkypeData(p => ({...p, [e.target.name]: e.target.value}));
+  const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => setZoomData(p => ({...p, [e.target.name]: e.target.value}));
+  const handlePaypalChange = (e: React.ChangeEvent<HTMLInputElement>) => setPaypalData(p => ({...p, [e.target.name]: e.target.value}));
+  const handleBitcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => setBitcoinData(p => ({...p, [e.target.name]: e.target.value}));
+  const handleSocialChange = (setter: React.Dispatch<React.SetStateAction<typeof socialInitialState>>) => (e: React.ChangeEvent<HTMLInputElement>) => setter({username: e.target.value});
+  const handlePlainTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setPlainTextData({text: e.target.value});
+
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-6 md:p-8">
@@ -469,14 +589,24 @@ export default function Home() {
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <ScrollArea className="w-full whitespace-nowrap rounded-md">
                     <TabsList className="w-max">
-                        <TabsTrigger value="text"><Type className="mr-2 h-4 w-4"/>URL/Text</TabsTrigger>
+                        <TabsTrigger value="text"><LinkIcon className="mr-2 h-4 w-4"/>URL</TabsTrigger>
+                        <TabsTrigger value="plaintext"><FileText className="mr-2 h-4 w-4"/>Text</TabsTrigger>
                         <TabsTrigger value="vcard"><Contact className="mr-2 h-4 w-4"/>vCard</TabsTrigger>
+                        <TabsTrigger value="mecard"><User className="mr-2 h-4 w-4"/>MeCard</TabsTrigger>
                         <TabsTrigger value="wifi"><Wifi className="mr-2 h-4 w-4"/>WiFi</TabsTrigger>
                         <TabsTrigger value="phone"><Phone className="mr-2 h-4 w-4"/>Phone</TabsTrigger>
                         <TabsTrigger value="sms"><MessageSquare className="mr-2 h-4 w-4"/>SMS</TabsTrigger>
                         <TabsTrigger value="email"><Mail className="mr-2 h-4 w-4"/>Email</TabsTrigger>
                         <TabsTrigger value="geo"><MapPin className="mr-2 h-4 w-4"/>Location</TabsTrigger>
                         <TabsTrigger value="event"><CalendarIcon className="mr-2 h-4 w-4"/>Event</TabsTrigger>
+                        <TabsTrigger value="whatsapp"><MessageCircle className="mr-2 h-4 w-4"/>WhatsApp</TabsTrigger>
+                        <TabsTrigger value="skype"><svg className="mr-2 h-4 w-4" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Skype</title><path d="M22.02 14.65c-.59-2.03-1.63-3.9-3.08-5.46-1.52-1.63-3.43-2.78-5.6-3.35-1.9-.49-3.92-.49-5.82 0-2.17.57-4.08 1.72-5.6 3.35C.47 10.75-.43 12.62.16 14.65c1.24 4.28 5.23 7.35 9.84 7.35 4.61 0 8.6-3.07 9.84-7.35.13-.43.2-.87.18-1.31ZM12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12zM18.81 16.3c.6-1.12.92-2.38.92-3.68 0-4.07-3.3-7.37-7.37-7.37S4.99 8.55 4.99 12.62c0 1.3.32 2.56.92 3.68-.3.12-.59.27-.86.44-1.22.77-1.4 2.16-.39 2.92.51.39 1.16.51 1.76.32 2.18-.7 4.78-1.02 7.42-.02 2.64 1 5.23.68 7.41-.02.6-.2 1.25-.1 1.76-.32 1.01-.76.83-2.15-.39-2.92-.27-.17-.56-.32-.86-.44Z"/></svg>Skype</TabsTrigger>
+                        <TabsTrigger value="zoom"><Video className="mr-2 h-4 w-4"/>Zoom</TabsTrigger>
+                        <TabsTrigger value="paypal"><DollarSign className="mr-2 h-4 w-4"/>PayPal</TabsTrigger>
+                        <TabsTrigger value="bitcoin"><Bitcoin className="mr-2 h-4 w-4"/>Bitcoin</TabsTrigger>
+                        <TabsTrigger value="twitter"><Twitter className="mr-2 h-4 w-4"/>Twitter</TabsTrigger>
+                        <TabsTrigger value="facebook"><Facebook className="mr-2 h-4 w-4"/>Facebook</TabsTrigger>
+                        <TabsTrigger value="instagram"><Instagram className="mr-2 h-4 w-4"/>Instagram</TabsTrigger>
                     </TabsList>
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
@@ -484,7 +614,7 @@ export default function Home() {
                 <TabsContent value="text">
                     <div className="grid gap-2">
                       <Label htmlFor="text-input" className="font-medium">
-                        URL or Text to Encode
+                        URL to Encode
                       </Label>
                       <Input
                         id="text-input"
@@ -493,6 +623,12 @@ export default function Home() {
                         placeholder="e.g., https://example.com"
                       />
                     </div>
+                </TabsContent>
+                <TabsContent value="plaintext">
+                  <div className="grid gap-2">
+                    <Label htmlFor="plaintext-input">Plain Text</Label>
+                    <Textarea id="plaintext-input" value={plainTextData.text} onChange={handlePlainTextChange} placeholder="Enter any text here..."/>
+                  </div>
                 </TabsContent>
                 <TabsContent value="vcard">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -530,6 +666,26 @@ export default function Home() {
                     </div>
                   </div>
                 </TabsContent>
+                 <TabsContent value="mecard">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="mecard-name">Name</Label>
+                      <Input id="mecard-name" name="name" value={meCardData.name} onChange={handleMeCardChange} />
+                    </div>
+                     <div className="grid gap-2">
+                      <Label htmlFor="mecard-phone">Phone</Label>
+                      <Input id="mecard-phone" name="phone" type="tel" value={meCardData.phone} onChange={handleMeCardChange} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="mecard-email">Email</Label>
+                      <Input id="mecard-email" name="email" type="email" value={meCardData.email} onChange={handleMeCardChange} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="mecard-website">Website</Label>
+                      <Input id="mecard-website" name="website" type="url" value={meCardData.website} onChange={handleMeCardChange} />
+                    </div>
+                  </div>
+                </TabsContent>
                 <TabsContent value="wifi">
                     <div className="grid gap-4">
                         <div className="grid gap-2">
@@ -550,6 +706,10 @@ export default function Home() {
                                     <SelectItem value="nopass">None</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id="wifi-hidden" checked={wifiData.hidden} onCheckedChange={(c) => setWifiData(p => ({...p, hidden: !!c}))}/>
+                            <Label htmlFor="wifi-hidden">Hidden Network</Label>
                         </div>
                     </div>
                 </TabsContent>
@@ -634,6 +794,110 @@ export default function Home() {
                             </div>
                         </div>
                     </div>
+                </TabsContent>
+                <TabsContent value="whatsapp">
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="whatsapp-phone">Phone Number</Label>
+                      <Input id="whatsapp-phone" name="phone" type="tel" value={whatsappData.phone} onChange={handleWhatsappChange} placeholder="15551234567 (no +)"/>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="whatsapp-message">Message (optional)</Label>
+                      <Textarea id="whatsapp-message" name="message" value={whatsappData.message} onChange={handleWhatsappChange}/>
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="skype">
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="skype-username">Skype Username</Label>
+                      <Input id="skype-username" name="username" value={skypeData.username} onChange={handleSkypeChange}/>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Action</Label>
+                      <Select value={skypeData.action} onValueChange={(v) => setSkypeData(p => ({...p, action: v}))}>
+                        <SelectTrigger><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="chat">Chat</SelectItem>
+                          <SelectItem value="call">Call</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="zoom">
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="zoom-id">Meeting ID</Label>
+                      <Input id="zoom-id" name="meetingId" value={zoomData.meetingId} onChange={handleZoomChange}/>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="zoom-password">Password (optional)</Label>
+                      <Input id="zoom-password" name="password" value={zoomData.password} onChange={handleZoomChange}/>
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="paypal">
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="paypal-email">PayPal Email</Label>
+                      <Input id="paypal-email" name="email" type="email" value={paypalData.email} onChange={handlePaypalChange}/>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="paypal-item">Item Name</Label>
+                      <Input id="paypal-item" name="itemName" value={paypalData.itemName} onChange={handlePaypalChange}/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="paypal-amount">Amount</Label>
+                        <Input id="paypal-amount" name="amount" type="number" value={paypalData.amount} onChange={handlePaypalChange}/>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Currency</Label>
+                        <Select value={paypalData.currency} onValueChange={(v) => setPaypalData(p => ({...p, currency: v}))}>
+                          <SelectTrigger><SelectValue/></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                            <SelectItem value="JPY">JPY</SelectItem>
+                            <SelectItem value="CAD">CAD</SelectItem>
+                            <SelectItem value="AUD">AUD</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="bitcoin">
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="bitcoin-address">Bitcoin Address</Label>
+                      <Input id="bitcoin-address" name="address" value={bitcoinData.address} onChange={handleBitcoinChange}/>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="bitcoin-amount">Amount (optional)</Label>
+                      <Input id="bitcoin-amount" name="amount" type="number" value={bitcoinData.amount} onChange={handleBitcoinChange}/>
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="twitter">
+                  <div className="grid gap-2">
+                      <Label htmlFor="twitter-username">Twitter Username</Label>
+                      <Input id="twitter-username" value={twitterData.username} onChange={handleSocialChange(setTwitterData)} placeholder="firebase"/>
+                  </div>
+                </TabsContent>
+                <TabsContent value="facebook">
+                  <div className="grid gap-2">
+                      <Label htmlFor="facebook-username">Facebook Username/ID</Label>
+                      <Input id="facebook-username" value={facebookData.username} onChange={handleSocialChange(setFacebookData)} placeholder="firebase"/>
+                  </div>
+                </TabsContent>
+                <TabsContent value="instagram">
+                  <div className="grid gap-2">
+                      <Label htmlFor="instagram-username">Instagram Username</Label>
+                      <Input id="instagram-username" value={instagramData.username} onChange={handleSocialChange(setInstagramData)} placeholder="firebase"/>
+                  </div>
                 </TabsContent>
                 </div>
               </Tabs>
@@ -859,5 +1123,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
