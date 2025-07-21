@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, type FC, useCallback } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
-import { Download, Palette, Settings2, Type, RotateCcw, Move } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,6 @@ const CANVAS_SIZE = 400;
 const QR_CODE_SIZE = 300;
 const QR_CODE_OFFSET = (CANVAS_SIZE - QR_CODE_SIZE) / 2;
 
-
 interface ColorInputProps {
   label: string;
   value: string;
@@ -68,6 +67,16 @@ const ColorInput: FC<ColorInputProps> = ({ label, value, onChange, className }) 
   </div>
 );
 
+interface TextOverlay {
+  id: number;
+  text: string;
+  color: string;
+  fontSize: number;
+  fontFamily: string;
+  rotation: number;
+  position: { x: number; y: number };
+}
+
 export default function Home() {
   const [text, setText] = useState("https://firebase.google.com/");
   const [foregroundColor, setForegroundColor] = useState("#000000");
@@ -77,17 +86,43 @@ export default function Home() {
   const [downloadFormat, setDownloadFormat] = useState("png");
 
   // Text overlay state
-  const [overlayText, setOverlayText] = useState("");
-  const [textColor, setTextColor] = useState("#000000");
-  const [fontSize, setFontSize] = useState(40);
-  const [fontFamily, setFontFamily] = useState("Inter");
-  const [textRotation, setTextRotation] = useState(0);
-  const [textPosition, setTextPosition] = useState({ x: CANVAS_SIZE / 2, y: CANVAS_SIZE / 2 });
+  const [overlays, setOverlays] = useState<TextOverlay[]>([]);
+  const [activeOverlayId, setActiveOverlayId] = useState<number | null>(null);
+  
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   const visibleCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  const activeOverlay = overlays.find(o => o.id === activeOverlayId);
+  
+  const updateOverlay = (id: number, updates: Partial<TextOverlay>) => {
+      setOverlays(overlays.map(o => o.id === id ? { ...o, ...updates } : o));
+  };
+  
+  const addOverlay = () => {
+    const newId = Date.now();
+    const newOverlay: TextOverlay = {
+      id: newId,
+      text: "New Text",
+      color: "#000000",
+      fontSize: 40,
+      fontFamily: "Inter",
+      rotation: 0,
+      position: { x: CANVAS_SIZE / 2, y: CANVAS_SIZE / 2 },
+    };
+    setOverlays([...overlays, newOverlay]);
+    setActiveOverlayId(newId);
+  };
+  
+  const deleteOverlay = (id: number) => {
+    setOverlays(overlays.filter(o => o.id !== id));
+    if (activeOverlayId === id) {
+      setActiveOverlayId(overlays.length > 1 ? overlays.find(o => o.id !== id)!.id : null);
+    }
+  };
+
 
   const drawCanvas = useCallback(async () => {
     const canvas = visibleCanvasRef.current;
@@ -114,27 +149,25 @@ export default function Home() {
             ctx.drawImage(qrCanvasRef.current, QR_CODE_OFFSET, QR_CODE_OFFSET);
         } catch (err) {
             console.error("Failed to generate QR code:", err);
-            // Optionally draw a placeholder or error message on the visible canvas
         }
     }
 
-
-    // Draw overlay text
-    if (overlayText) {
+    // Draw all overlays
+    overlays.forEach(overlay => {
       ctx.save();
-      ctx.translate(textPosition.x, textPosition.y);
-      ctx.rotate((textRotation * Math.PI) / 180);
-      ctx.fillStyle = textColor;
-      ctx.font = `${fontSize}px "${fontFamily}"`;
+      ctx.translate(overlay.position.x, overlay.position.y);
+      ctx.rotate((overlay.rotation * Math.PI) / 180);
+      ctx.fillStyle = overlay.color;
+      ctx.font = `${overlay.fontSize}px "${overlay.fontFamily}"`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(overlayText, 0, 0);
+      ctx.fillText(overlay.text, 0, 0);
       ctx.restore();
-    }
+    });
     
     setQrCodeDataUrl(canvas.toDataURL("image/png"));
 
-  }, [text, foregroundColor, backgroundColor, errorCorrectionLevel, overlayText, textColor, fontSize, fontFamily, textRotation, textPosition]);
+  }, [text, foregroundColor, backgroundColor, errorCorrectionLevel, overlays]);
 
   useEffect(() => {
     const timeoutId = setTimeout(drawCanvas, 300);
@@ -144,31 +177,36 @@ export default function Home() {
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = visibleCanvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !activeOverlay) return;
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // A simple hit test for the text
-    const textWidth = visibleCanvasRef.current?.getContext('2d')?.measureText(overlayText).width ?? 0;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.font = `${activeOverlay.fontSize}px "${activeOverlay.fontFamily}"`;
+    const textWidth = ctx.measureText(activeOverlay.text).width;
+
     if (
-      overlayText &&
-      Math.abs(mouseX - textPosition.x) < textWidth / 2 &&
-      Math.abs(mouseY - textPosition.y) < fontSize / 2
+      Math.abs(mouseX - activeOverlay.position.x) < textWidth / 2 &&
+      Math.abs(mouseY - activeOverlay.position.y) < activeOverlay.fontSize / 2
     ) {
       setIsDragging(true);
-      setDragStart({ x: mouseX - textPosition.x, y: mouseY - dragStart.y });
+      setDragStart({ x: mouseX - activeOverlay.position.x, y: mouseY - activeOverlay.position.y });
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !visibleCanvasRef.current) return;
+    if (!isDragging || !visibleCanvasRef.current || !activeOverlay) return;
     const rect = visibleCanvasRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    setTextPosition({
-      x: mouseX - dragStart.x,
-      y: mouseY - dragStart.y,
+    updateOverlay(activeOverlay.id, {
+        position: {
+            x: mouseX - dragStart.x,
+            y: mouseY - dragStart.y,
+        }
     });
   };
 
@@ -245,50 +283,79 @@ export default function Home() {
                 </AccordionItem>
                 
                 <AccordionItem value="text-overlay">
-                  <AccordionTrigger className="text-lg font-semibold">
-                    <div className="flex items-center">
-                      <Type className="mr-2 h-5 w-5 text-accent" />
-                      Text Overlay
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-4">
-                    <div className="grid gap-4">
-                        <Input
-                            placeholder="Your text here..."
-                            value={overlayText}
-                            onChange={(e) => setOverlayText(e.target.value)}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                          <ColorInput
-                            label="Text Color"
-                            value={textColor}
-                            onChange={(e) => setTextColor(e.target.value)}
-                          />
-                           <div className="grid gap-2">
-                             <Label>Font</Label>
-                             <Select value={fontFamily} onValueChange={setFontFamily}>
-                               <SelectTrigger><SelectValue /></SelectTrigger>
+                   <AccordionTrigger className="text-lg font-semibold">
+                     <div className="flex items-center">
+                       <Type className="mr-2 h-5 w-5 text-accent" />
+                       Text Overlays
+                     </div>
+                   </AccordionTrigger>
+                   <AccordionContent className="pt-4">
+                     <div className="flex items-center justify-between mb-4">
+                        <div className="grid gap-2">
+                            <Label>Overlays</Label>
+                             <Select value={activeOverlayId?.toString() ?? ""} onValueChange={(id) => setActiveOverlayId(Number(id))}>
+                               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Select an overlay..."/></SelectTrigger>
                                <SelectContent>
-                                 <SelectItem value="Inter">Inter</SelectItem>
-                                 <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
-                                 <SelectItem value="Arial">Arial</SelectItem>
-                                 <SelectItem value="Courier New">Courier New</SelectItem>
-                                 <SelectItem value="Verdana">Verdana</SelectItem>
+                                {overlays.map(o => <SelectItem key={o.id} value={o.id.toString()}>{o.text.substring(0, 20)}</SelectItem>)}
                                </SelectContent>
                              </Select>
+                        </div>
+                       <Button onClick={addOverlay} size="sm"><PlusCircle className="mr-2 h-4 w-4"/>Add Text</Button>
+                     </div>
+
+                     {activeOverlay ? (
+                       <div className="grid gap-4 border-t pt-4">
+                           <div className="flex items-end gap-2">
+                             <div className="grid gap-2 flex-grow">
+                                <Label>Text</Label>
+                                <Input
+                                    placeholder="Your text here..."
+                                    value={activeOverlay.text}
+                                    onChange={(e) => updateOverlay(activeOverlay.id, {text: e.target.value})}
+                                />
+                             </div>
+                             <Button variant="destructive" size="icon" onClick={() => deleteOverlay(activeOverlay.id)}>
+                                 <Trash2 className="h-4 w-4"/>
+                                 <span className="sr-only">Delete overlay</span>
+                             </Button>
                            </div>
+                           <div className="grid grid-cols-2 gap-4">
+                             <ColorInput
+                               label="Text Color"
+                               value={activeOverlay.color}
+                               onChange={(e) => updateOverlay(activeOverlay.id, {color: e.target.value})}
+                             />
+                              <div className="grid gap-2">
+                                <Label>Font</Label>
+                                <Select value={activeOverlay.fontFamily} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontFamily: v})}>
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Inter">Inter</SelectItem>
+                                    <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
+                                    <SelectItem value="Arial">Arial</SelectItem>
+                                    <SelectItem value="Courier New">Courier New</SelectItem>
+                                    <SelectItem value="Verdana">Verdana</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                           </div>
+                            <div className="grid gap-2">
+                               <Label>Font Size: {activeOverlay.fontSize}px</Label>
+                               <Slider value={[activeOverlay.fontSize]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0]})} min={10} max={80} step={1} />
+                           </div>
+                           <div className="grid gap-2">
+                               <Label>Rotation: {activeOverlay.rotation}°</Label>
+                               <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
+                           </div>
+                       </div>
+                     ) : (
+                        <div className="text-center text-muted-foreground p-4 border-t">
+                            <p>No text overlay selected.</p>
+                            <p>Add a new one to get started.</p>
                         </div>
-                         <div className="grid gap-2">
-                            <Label>Font Size: {fontSize}px</Label>
-                            <Slider value={[fontSize]} onValueChange={(v) => setFontSize(v[0])} min={10} max={80} step={1} />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label>Rotation: {textRotation}°</Label>
-                            <Slider value={[textRotation]} onValueChange={(v) => setTextRotation(v[0])} min={-180} max={180} step={1} />
-                        </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                     )}
+                   </AccordionContent>
+                 </AccordionItem>
 
                 <AccordionItem value="advanced">
                   <AccordionTrigger className="text-lg font-semibold">
@@ -340,12 +407,12 @@ export default function Home() {
                     style={{backgroundColor: backgroundColor}}
                  />
               </div>
-              {overlayText && (
+              {activeOverlay && (
                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <Button variant="ghost" size="sm" onClick={() => setTextPosition({x:CANVAS_SIZE/2, y:CANVAS_SIZE/2})}>
+                    <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {position:{x:CANVAS_SIZE/2, y:CANVAS_SIZE/2}})}>
                         <Move className="mr-2 h-4 w-4" /> Reset Position
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setTextRotation(0)}>
+                    <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {rotation: 0})}>
                         <RotateCcw className="mr-2 h-4 w-4" /> Reset Rotation
                     </Button>
                  </div>
