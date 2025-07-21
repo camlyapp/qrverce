@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, Image as ImageIcon, Square, Dot, Contrast } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, Image as ImageIcon, Square, Dot, Contrast, RotateCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -414,6 +414,7 @@ export default function Home() {
 
     // Draw QR code to both canvases
     finalCtx.drawImage(qrImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    visibleCtx.drawImage(qrImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
     
     // Draw overlays to both canvases
     overlays.forEach(o => {
@@ -552,21 +553,30 @@ export default function Home() {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    const clickedOverlay = overlays.find(overlay => {
-        const textMetrics = document.createElement('canvas').getContext('2d')!;
-        textMetrics.font = `${overlay.fontStyle} ${overlay.fontWeight} ${overlay.fontSize}px "${overlay.fontFamily}"`;
-        const width = textMetrics.measureText(overlay.text).width;
-        
-        // This is a simplified hit-detection that doesn't account for rotation.
-        const halfWidth = width / 2;
-        const halfHeight = overlay.fontSize / 2;
+    // Check overlays in reverse order to select the topmost one
+    const clickedOverlay = [...overlays].reverse().find(overlay => {
+        const ctx = document.createElement('canvas').getContext('2d')!;
+        ctx.font = `${overlay.fontStyle} ${overlay.fontWeight} ${overlay.fontSize}px "${overlay.fontFamily}"`;
+        const textMetrics = ctx.measureText(overlay.text);
 
-        return (
-            mouseX >= overlay.position.x - halfWidth &&
-            mouseX <= overlay.position.x + halfWidth &&
-            mouseY >= overlay.position.y - halfHeight &&
-            mouseY <= overlay.position.y + halfHeight
-        )
+        // Create a path for hit detection that respects rotation
+        ctx.save();
+        ctx.translate(overlay.position.x, overlay.position.y);
+        ctx.rotate((overlay.rotation * Math.PI) / 180);
+        
+        let x = 0;
+        if(overlay.textAlign === 'center') x = -textMetrics.width / 2;
+        if(overlay.textAlign === 'right') x = -textMetrics.width;
+
+        const y = -(textMetrics.actualBoundingBoxAscent ?? overlay.fontSize / 2);
+        const width = textMetrics.width;
+        const height = (textMetrics.actualBoundingBoxAscent ?? overlay.fontSize / 2) + (textMetrics.actualBoundingBoxDescent ?? overlay.fontSize / 2);
+
+        ctx.beginPath();
+        ctx.rect(x, y, width, height);
+        ctx.restore();
+        
+        return ctx.isPointInPath(mouseX, mouseY);
     });
 
     if (clickedOverlay) {
@@ -604,6 +614,10 @@ export default function Home() {
     if (!finalCanvas) return;
     
     if (downloadFormat === 'svg') {
+        if (overlays.length > 0) {
+            alert("SVG download with text overlays is not supported. Please choose another format.");
+            return;
+        }
         if (qrCodeRef.current) {
             const svgString = await qrCodeRef.current.getRawData('svg');
             const blob = new Blob([svgString!], { type: "image/svg+xml" });
@@ -1307,6 +1321,13 @@ export default function Home() {
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {rotation: 0})}>
                         <RotateCcw className="mr-2 h-4 w-4" /> Reset Rotation
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => {
+                        let newRotation = activeOverlay.rotation + 90;
+                        if (newRotation > 180) newRotation -= 360;
+                        updateOverlay(activeOverlay.id, {rotation: newRotation});
+                    }}>
+                        <RotateCw className="mr-2 h-4 w-4" /> Rotate 90°
                     </Button>
                  </div>
               )}
