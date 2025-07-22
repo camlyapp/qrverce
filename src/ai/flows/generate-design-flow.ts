@@ -71,7 +71,7 @@ const generateDesignFlow = ai.defineFlow(
         logoGenerationPrompt(prompt)
     ]);
     
-    const design = await designResponse.output();
+    const design = designResponse.output;
     if (!design) {
       throw new Error('Failed to generate design from prompt.');
     }
