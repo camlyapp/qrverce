@@ -2,9 +2,10 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { WandSparkles } from 'lucide-react';
+import { WandSparkles, Twitter, Github, Dribbble } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 
 export default function GeneratorsLayout({
@@ -45,8 +46,25 @@ export default function GeneratorsLayout({
            </div>
       </header>
       <div className="flex-grow">{children}</div>
-       <footer className="border-t bg-background p-4 text-center text-sm text-muted-foreground shrink-0">
-        © {year} CodeMint. All rights reserved.
+       <footer className="border-t bg-background">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground text-center sm:text-left">
+            © {year} Camly. All rights reserved.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <nav className="flex gap-4 sm:gap-6 text-sm">
+              <Link href="#" className="text-muted-foreground hover:text-foreground">Terms</Link>
+              <Link href="#" className="text-muted-foreground hover:text-foreground">Privacy</Link>
+              <Link href="#" className="text-muted-foreground hover:text-foreground">Contact</Link>
+            </nav>
+            <div className="hidden sm:block h-5 w-px bg-border" />
+            <div className="flex gap-4">
+              <Link href="#"><Twitter className="h-5 w-5 text-muted-foreground hover:text-foreground" /></Link>
+              <Link href="#"><Github className="h-5 w-5 text-muted-foreground hover:text-foreground" /></Link>
+              <Link href="#"><Dribbble className="h-5 w-5 text-muted-foreground hover:text-foreground" /></Link>
+            </div>
+          </div>
+        </div>
       </footer>
     </div>
   );
