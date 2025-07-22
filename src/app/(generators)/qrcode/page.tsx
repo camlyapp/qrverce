@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useRef, type FC } from "react";
@@ -420,7 +421,7 @@ const QrCodePreview: FC<{
 };
 
 
-export default function Home() {
+export default function QrCodePage() {
   const { toast } = useToast();
   const [scale, setScale] = useState(2);
   const [qrSize, setQrSize] = useState(300);
@@ -965,15 +966,10 @@ export default function Home() {
 
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
-       <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
-           <div className="flex items-center gap-2">
-              <Wand2 className="h-6 w-6 text-primary" />
-              <h1 className="font-headline text-xl font-bold tracking-tight text-primary">
-                QRCodeMint
-              </h1>
-           </div>
-            <div className="ml-auto flex items-center gap-2 sm:gap-4">
+    <div className="flex flex-col flex-1">
+      <div className="flex-1 grid md:grid-cols-12 gap-px bg-border md:h-[calc(100vh-129px)]">
+        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 items-center justify-center relative">
+            <div className="absolute top-4 right-4 flex items-center gap-2 sm:gap-4">
               <div className="flex items-center gap-2 sm:gap-4">
                 <Label htmlFor="format-select" className="flex-shrink-0 text-sm font-medium">
                   Format:
@@ -1001,9 +997,6 @@ export default function Home() {
                 Download
               </Button>
             </div>
-      </header>
-      <main className="flex-1 grid md:grid-cols-12 gap-px bg-border md:h-[calc(100vh-65px)]">
-        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 items-center justify-center">
             <QrCodePreview
                 qrWrapperRef={qrWrapperRef}
                 canvasRef={canvasRef}
@@ -1014,7 +1007,7 @@ export default function Home() {
                 scale={scale}
               />
         </div>
-        <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col md:h-[calc(100vh-65px)]">
+        <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col md:h-[calc(100vh-129px)]">
             <Tabs defaultValue="content" className="flex-grow flex flex-col md:overflow-hidden">
                 <TabsList className="w-full grid grid-cols-2 rounded-none h-auto shrink-0">
                     <TabsTrigger value="content" className="py-3 rounded-none">Content</TabsTrigger>
@@ -1755,10 +1748,7 @@ export default function Home() {
                 </TabsContent>
             </Tabs>
         </div>
-      </main>
-      <footer className="border-t bg-background p-4 text-center text-sm text-muted-foreground shrink-0">
-        © {new Date().getFullYear()} QRCodeMint. All rights reserved.
-      </footer>
+      </div>
     </div>
   );
 }
