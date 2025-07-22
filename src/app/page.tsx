@@ -805,8 +805,8 @@ export default function Home() {
               </Button>
             </div>
       </header>
-      <main className="flex-1 flex flex-col md:grid md:grid-cols-12 gap-px bg-border overflow-auto">
-        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6">
+      <main className="flex-1 grid md:grid-cols-12 gap-px bg-border md:overflow-hidden">
+        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 md:overflow-y-auto">
             <QrCodePreview
                 qrSize={qrSize}
                 qrWrapperRef={qrWrapperRef}
@@ -1150,7 +1150,7 @@ export default function Home() {
                    </ScrollArea>
                 </TabsContent>
                 <TabsContent value="design" className="flex-grow overflow-y-auto">
-                   <ScrollArea className="h-full">
+                   <div className="p-0">
                        <Accordion type="multiple" defaultValue={['colors']} className="w-full">
                           <AccordionItem value="colors" className="border-b-0">
                             <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
@@ -1455,7 +1455,7 @@ export default function Home() {
                             </AccordionContent>
                           </AccordionItem>
                         </Accordion>
-                   </ScrollArea>
+                   </div>
                 </TabsContent>
             </Tabs>
         </div>
@@ -1466,3 +1466,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
