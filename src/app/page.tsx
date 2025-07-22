@@ -316,40 +316,35 @@ const defaultGradientState: GradientState = {
 };
 
 const QrCodePreview: FC<{
-    qrSize: number;
     qrWrapperRef: React.RefObject<HTMLDivElement>;
     canvasRef: React.RefObject<HTMLCanvasElement>;
-    finalCanvasRef: React.RefObject<HTMLCanvasElement>;
     activeOverlay: TextOverlay | undefined;
     isDragging: boolean;
-    handleMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
+    onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
     overlays: TextOverlay[];
-    updateOverlay: (id: number, updates: Partial<TextOverlay>) => void;
+    qrSize: number;
 }> = ({
-    qrSize,
     qrWrapperRef,
     canvasRef,
-    finalCanvasRef,
     activeOverlay,
     isDragging,
-    handleMouseDown,
-    overlays,
-    updateOverlay
+    onMouseDown,
+    qrSize,
 }) => (
     <Card className="flex-grow flex flex-col shadow-lg">
         <CardContent className="p-4 sm:p-6 flex-grow flex items-center justify-center">
             <div
                 className="relative w-full max-w-[500px] aspect-square rounded-lg border bg-card shadow-inner overflow-hidden"
-                style={{ 
+                style={{
                     backgroundSize: '20px 20px',
                     backgroundColor: 'white',
                     backgroundImage:
-                      'linear-gradient(to right, #f0f0f0 1px, transparent 1px),' +
-                      'linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)',
+                        'linear-gradient(to right, #f0f0f0 1px, transparent 1px),' +
+                        'linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)',
                 }}
             >
-                 <div ref={qrWrapperRef} className="absolute inset-0" />
-                 <canvas
+                <div ref={qrWrapperRef} className="absolute inset-0" style={{ width: qrSize, height: qrSize, margin: 'auto' }} />
+                <canvas
                     ref={canvasRef}
                     width={qrSize}
                     height={qrSize}
@@ -358,28 +353,10 @@ const QrCodePreview: FC<{
                         activeOverlay ? "cursor-grab" : "",
                         isDragging ? "cursor-grabbing" : ""
                     )}
-                    onMouseDown={handleMouseDown}
-                 />
-                 <canvas ref={finalCanvasRef} width={qrSize} height={qrSize} className="hidden" />
+                    onMouseDown={onMouseDown}
+                />
             </div>
         </CardContent>
-         {activeOverlay && (
-             <CardFooter className="p-4 bg-muted/50 border-t flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground sm:gap-4">
-                <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {position:{x:qrSize/2, y:qrSize/2}})}>
-                    <Move className="mr-2 h-4 w-4" /> Reset Position
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {rotation: 0})}>
-                    <RotateCcw className="mr-2 h-4 w-4" /> Reset Rotation
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => {
-                    let newRotation = activeOverlay.rotation + 90;
-                    if (newRotation > 180) newRotation -= 360;
-                    updateOverlay(activeOverlay.id, {rotation: newRotation});
-                }}>
-                    <RotateCw className="mr-2 h-4 w-4" /> Rotate 90°
-                </Button>
-             </CardFooter>
-          )}
     </Card>
 );
 
@@ -498,10 +475,14 @@ export default function Home() {
 
   const drawOverlaysOnly = () => {
     const visibleCtx = canvasRef.current?.getContext("2d");
-    if (!visibleCtx || !qrImageRef.current) return;
+    if (!visibleCtx || !canvasRef.current) return;
     
-    visibleCtx.clearRect(0, 0, qrSize, qrSize);
-    visibleCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
+    visibleCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+    if (qrImageRef.current) {
+        visibleCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
+    }
+    
     overlays.forEach(o => drawOverlay(visibleCtx, o));
   }
   
@@ -509,19 +490,21 @@ export default function Home() {
     const finalCtx = finalCanvasRef.current?.getContext("2d");
     const visibleCtx = canvasRef.current?.getContext("2d");
 
-    if (!finalCtx || !visibleCtx || !qrCodeRef.current) return;
+    if (!finalCtx || !visibleCtx || !qrCodeRef.current || !finalCanvasRef.current || !canvasRef.current) return;
     
-    finalCtx.clearRect(0, 0, qrSize, qrSize);
-    visibleCtx.clearRect(0, 0, qrSize, qrSize);
+    finalCtx.clearRect(0, 0, finalCanvasRef.current.width, finalCanvasRef.current.height);
+    visibleCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     
     const qrDataUrl = await qrCodeRef.current.getRawData('png');
     if (!qrDataUrl) return;
 
     qrImageRef.current = await new Promise<HTMLImageElement>(resolve => {
         const img = new window.Image();
-        img.onload = () => resolve(img);
-        const url = URL.createObjectURL(qrDataUrl as Blob);
-        img.src = url;
+        img.onload = () => {
+          URL.revokeObjectURL(img.src);
+          resolve(img);
+        }
+        img.src = URL.createObjectURL(qrDataUrl as Blob);
     });
 
     finalCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
@@ -656,19 +639,18 @@ export default function Home() {
           qrCodeRef.current.update(finalQrOptions);
       }
 
-      let timeoutId: NodeJS.Timeout;
       if (qrWrapperRef.current && qrCodeRef.current) {
-          qrWrapperRef.current.innerHTML = '';
+          if(qrWrapperRef.current.firstChild) {
+            qrWrapperRef.current.removeChild(qrWrapperRef.current.firstChild);
+          }
           qrCodeRef.current.append(qrWrapperRef.current);
-          timeoutId = setTimeout(drawAllLayers, 100);
+          drawAllLayers();
       }
-
-      return () => clearTimeout(timeoutId);
   }, [qrContent, qrOptions, logo, dotsGradient, backgroundGradient, qrSize]);
   
   useEffect(() => {
-    drawAllLayers();
-  }, [overlays, qrSize]);
+    drawOverlaysOnly();
+  }, [overlays]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -728,13 +710,11 @@ export default function Home() {
               y: mouseY - dragStart.y
           }
       } : o));
-      drawOverlaysOnly();
     };
 
     const handleMouseUp = () => {
       if (isDragging) {
           setIsDragging(false);
-          drawAllLayers();
       }
     };
     
@@ -750,9 +730,16 @@ export default function Home() {
 
   const handleDownload = async () => {
     await drawAllLayers();
-    const finalCanvas = finalCanvasRef.current;
-    if (!finalCanvas) return;
-    
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = qrSize;
+    finalCanvas.height = qrSize;
+    const finalCtx = finalCanvas.getContext('2d');
+
+    if(!finalCtx || !qrImageRef.current) return;
+
+    finalCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
+    overlays.forEach(o => drawOverlay(finalCtx, o));
+
     if (downloadFormat === 'svg') {
         if (overlays.length > 0) {
             alert("SVG download with text overlays is not supported. Please choose another format.");
@@ -862,21 +849,19 @@ export default function Home() {
               </Button>
             </div>
       </header>
-      <main className="flex-1 grid md:grid-cols-12 gap-px bg-border md:h-[calc(100vh-65px-41px)]">
-        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6">
+      <main className="flex-1 grid md:grid-cols-12 gap-px bg-border md:h-[calc(100vh-65px)]">
+        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 md:overflow-y-auto">
             <QrCodePreview
-                qrSize={qrSize}
                 qrWrapperRef={qrWrapperRef}
                 canvasRef={canvasRef}
-                finalCanvasRef={finalCanvasRef}
                 activeOverlay={activeOverlay}
                 isDragging={isDragging}
-                handleMouseDown={handleMouseDown}
+                onMouseDown={handleMouseDown}
                 overlays={overlays}
-                updateOverlay={updateOverlay}
+                qrSize={qrSize}
               />
         </div>
-        <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col md:h-[calc(100vh-65px-41px)]">
+        <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col md:h-[calc(100vh-65px)]">
             <Tabs defaultValue="content" className="flex-grow flex flex-col md:overflow-hidden">
                 <TabsList className="w-full grid grid-cols-2 rounded-none h-auto shrink-0">
                     <TabsTrigger value="content" className="py-3 rounded-none">Content</TabsTrigger>
@@ -1205,7 +1190,7 @@ export default function Home() {
                 </TabsContent>
                 <TabsContent value="design" className="flex-grow md:overflow-y-auto">
                    <ScrollArea className="h-full">
-                       <Accordion type="multiple" defaultValue={['colors']} className="w-full">
+                       <Accordion type="multiple" defaultValue={['colors', 'qr-style', 'logo', 'text-overlay', 'advanced']} className="w-full">
                           <AccordionItem value="colors" className="border-b-0">
                             <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
                               <div className="flex items-center">
