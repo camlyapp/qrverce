@@ -1149,7 +1149,7 @@ export default function Home() {
                        </div>
                    </ScrollArea>
                 </TabsContent>
-                <TabsContent value="design" className="flex-grow overflow-hidden">
+                <TabsContent value="design" className="flex-grow overflow-y-auto">
                    <ScrollArea className="h-full">
                        <Accordion type="multiple" defaultValue={['colors']} className="w-full">
                           <AccordionItem value="colors" className="border-b-0">
