@@ -1214,7 +1214,7 @@ export default function Home() {
                 </TabsContent>
                 <TabsContent value="design" className="flex-grow md:overflow-y-auto">
                    <ScrollArea className="h-full">
-                       <Accordion type="multiple" defaultValue={['colors', 'qr-style', 'logo', 'text-overlay', 'advanced']} className="w-full">
+                       <Accordion type="single" defaultValue="colors" collapsible className="w-full">
                           <AccordionItem value="colors" className="border-b-0">
                             <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
                               <div className="flex items-center">
@@ -1409,7 +1409,7 @@ export default function Home() {
                                        </Button>
                                      </div>
                                      
-                                     <Accordion type="multiple" defaultValue={['font-style']} className="w-full">
+                                     <Accordion type="single" defaultValue="font-style" collapsible className="w-full">
                                           <AccordionItem value="font-style">
                                               <AccordionTrigger className="text-base">Font & Style</AccordionTrigger>
                                               <AccordionContent className="pt-4 space-y-4">
