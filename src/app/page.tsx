@@ -1273,7 +1273,6 @@ export default function Home() {
                                   </div>
                               </AccordionContent>
                            </AccordionItem>
-
                            <AccordionItem value="logo" className="border-b-0">
                                <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
                                    <div className="flex items-center"><Upload className="mr-2 h-5 w-5 text-accent" /> Logo</div>
@@ -1306,7 +1305,6 @@ export default function Home() {
                                    )}
                                </AccordionContent>
                            </AccordionItem>
-                          
                           <AccordionItem value="text-overlay" className="border-b-0">
                              <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
                                <div className="flex items-center">
@@ -1415,7 +1413,6 @@ export default function Home() {
                                )}
                              </AccordionContent>
                            </AccordionItem>
-
                           <AccordionItem value="advanced" className="border-b-0">
                             <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
                               <div className="flex items-center">
