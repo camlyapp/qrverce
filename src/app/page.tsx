@@ -1281,9 +1281,10 @@ export default function Home() {
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                        <div className="grid gap-2">
                                           <Label>Corner Square Style</Label>
-                                          <Select value={qrOptions.cornersSquareOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersSquareOptions', {type: v})}>
+                                          <Select value={qrOptions.cornersSquareOptions?.type ?? ""} onValueChange={(v) => updateNestedQrOptions('cornersSquareOptions', {type: v})}>
                                               <SelectTrigger><SelectValue/></SelectTrigger>
                                               <SelectContent>
+                                                  <SelectItem value="">Default</SelectItem>
                                                   <SelectItem value="square">Square</SelectItem>
                                                   <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
                                                   <SelectItem value="dot">Dot</SelectItem>
@@ -1292,9 +1293,10 @@ export default function Home() {
                                       </div>
                                       <div className="grid gap-2">
                                           <Label>Corner Dot Style</Label>
-                                          <Select value={qrOptions.cornersDotOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersDotOptions', {type: v})}>
+                                          <Select value={qrOptions.cornersDotOptions?.type ?? ""} onValueChange={(v) => updateNestedQrOptions('cornersDotOptions', {type: v})}>
                                               <SelectTrigger><SelectValue/></SelectTrigger>
                                               <SelectContent>
+                                                  <SelectItem value="">Default</SelectItem>
                                                   <SelectItem value="square">Square</SelectItem>
                                                   <SelectItem value="dot">Dot</SelectItem>
                                               </SelectContent>
