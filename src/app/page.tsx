@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, Image as ImageIcon, Square, Dot, Contrast, RotateCw } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -1206,67 +1206,66 @@ export default function Home() {
                              </Button>
                            </div>
                            
-                           <Separator />
-
-                           <div>
-                                <h4 className="text-sm font-medium mb-3">Font & Style</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                 <div className="grid gap-2">
-                                   <Label>Font</Label>
-                                   <Select value={activeOverlay.fontFamily} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontFamily: v})}>
-                                     <SelectTrigger><SelectValue /></SelectTrigger>
-                                     <SelectContent>
-                                       <SelectItem value="Inter">Inter</SelectItem>
-                                       <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
-                                       <SelectItem value="Arial">Arial</SelectItem>
-                                       <SelectItem value="Courier New">Courier New</SelectItem>
-                                       <SelectItem value="Verdana">Verdana</SelectItem>
-                                     </SelectContent>
-                                   </Select>
-                                 </div>
-                                  <ColorInput
-                                   label="Color"
-                                   value={activeOverlay.color}
-                                   onChange={(e) => updateOverlay(activeOverlay.id, {color: e.target.value})}
-                                 />
-                               </div>
-                                <div className="grid gap-2 mt-4">
-                                  <Label>Font Size: {activeOverlay.fontSize}px</Label>
-                                  <Slider value={[activeOverlay.fontSize]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0]})} min={10} max={80} step={1} />
-                               </div>
-                                <div className="grid gap-2 mt-4">
-                                 <Label>Style</Label>
-                                 <ToggleGroup type="multiple" value={[activeOverlay.fontWeight, activeOverlay.fontStyle].filter(s => s !== 'normal')} onValueChange={(value) => {
-                                   updateOverlay(activeOverlay.id, {
-                                     fontWeight: value.includes('bold') ? 'bold' : 'normal',
-                                     fontStyle: value.includes('italic') ? 'italic' : 'normal'
-                                   });
-                                 }}>
-                                   <ToggleGroupItem value="bold" aria-label="Toggle bold"><Bold className="h-4 w-4" /></ToggleGroupItem>
-                                   <ToggleGroupItem value="italic" aria-label="Toggle italic"><Italic className="h-4 w-4" /></ToggleGroupItem>
-                                 </ToggleGroup>
-                               </div>
-                           </div>
-                            
-                            <Separator />
-                            
-                           <div>
-                               <h4 className="text-sm font-medium mb-3">Layout</h4>
-                               <div className="grid grid-cols-1 gap-4">
-                                   <div className="grid gap-2">
-                                     <Label>Alignment</Label>
-                                     <ToggleGroup type="single" value={activeOverlay.textAlign} onValueChange={(value: TextOverlay['textAlign']) => value && updateOverlay(activeOverlay.id, {textAlign: value})}>
-                                       <ToggleGroupItem value="left" aria-label="Align left"><AlignLeft className="h-4 w-4" /></ToggleGroupItem>
-                                       <ToggleGroupItem value="center" aria-label="Align center"><AlignCenter className="h-4 w-4" /></ToggleGroupItem>
-                                       <ToggleGroupItem value="right" aria-label="Align right"><AlignRight className="h-4 w-4" /></ToggleGroupItem>
-                                     </ToggleGroup>
-                                   </div>
-                                   <div className="grid gap-2">
-                                      <Label>Rotation: {activeOverlay.rotation}°</Label>
-                                      <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
-                                   </div>
-                               </div>
-                           </div>
+                           <Accordion type="multiple" defaultValue={['font-style']} className="w-full">
+                                <AccordionItem value="font-style">
+                                    <AccordionTrigger className="text-base">Font & Style</AccordionTrigger>
+                                    <AccordionContent className="pt-4 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                         <div className="grid gap-2">
+                                           <Label>Font</Label>
+                                           <Select value={activeOverlay.fontFamily} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontFamily: v})}>
+                                             <SelectTrigger><SelectValue /></SelectTrigger>
+                                             <SelectContent>
+                                               <SelectItem value="Inter">Inter</SelectItem>
+                                               <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
+                                               <SelectItem value="Arial">Arial</SelectItem>
+                                               <SelectItem value="Courier New">Courier New</SelectItem>
+                                               <SelectItem value="Verdana">Verdana</SelectItem>
+                                             </SelectContent>
+                                           </Select>
+                                         </div>
+                                          <ColorInput
+                                           label="Color"
+                                           value={activeOverlay.color}
+                                           onChange={(e) => updateOverlay(activeOverlay.id, {color: e.target.value})}
+                                         />
+                                       </div>
+                                        <div className="grid gap-2">
+                                          <Label>Font Size: {activeOverlay.fontSize}px</Label>
+                                          <Slider value={[activeOverlay.fontSize]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0]})} min={10} max={80} step={1} />
+                                       </div>
+                                        <div className="grid gap-2">
+                                         <Label>Style</Label>
+                                         <ToggleGroup type="multiple" value={[activeOverlay.fontWeight, activeOverlay.fontStyle].filter(s => s !== 'normal')} onValueChange={(value) => {
+                                           updateOverlay(activeOverlay.id, {
+                                             fontWeight: value.includes('bold') ? 'bold' : 'normal',
+                                             fontStyle: value.includes('italic') ? 'italic' : 'normal'
+                                           });
+                                         }}>
+                                           <ToggleGroupItem value="bold" aria-label="Toggle bold"><Bold className="h-4 w-4" /></ToggleGroupItem>
+                                           <ToggleGroupItem value="italic" aria-label="Toggle italic"><Italic className="h-4 w-4" /></ToggleGroupItem>
+                                         </ToggleGroup>
+                                       </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                                <AccordionItem value="layout">
+                                    <AccordionTrigger className="text-base">Layout</AccordionTrigger>
+                                    <AccordionContent className="pt-4 space-y-4">
+                                       <div className="grid gap-2">
+                                         <Label>Alignment</Label>
+                                         <ToggleGroup type="single" value={activeOverlay.textAlign} onValueChange={(value: TextOverlay['textAlign']) => value && updateOverlay(activeOverlay.id, {textAlign: value})}>
+                                           <ToggleGroupItem value="left" aria-label="Align left"><AlignLeft className="h-4 w-4" /></ToggleGroupItem>
+                                           <ToggleGroupItem value="center" aria-label="Align center"><AlignCenter className="h-4 w-4" /></ToggleGroupItem>
+                                           <ToggleGroupItem value="right" aria-label="Align right"><AlignRight className="h-4 w-4" /></ToggleGroupItem>
+                                         </ToggleGroup>
+                                       </div>
+                                       <div className="grid gap-2">
+                                          <Label>Rotation: {activeOverlay.rotation}°</Label>
+                                          <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
+                                       </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
                        </div>
                      ) : (
                         <div className="text-center text-muted-foreground p-4 border-t">
@@ -1384,5 +1383,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
