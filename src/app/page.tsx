@@ -271,9 +271,9 @@ const generateFacebookString = (data: typeof socialInitialState) => `https://fac
 const generateInstagramString = (data: typeof socialInitialState) => `https://instagram.com/${data.username}`;
 
 const defaultQrOptions: Omit<QRCodeStylingOptions, 'data'> = {
-    width: 400,
-    height: 400,
-    margin: 20,
+    width: 300,
+    height: 300,
+    margin: 25,
     qrOptions: {
         errorCorrectionLevel: "H",
     },
@@ -366,7 +366,7 @@ const QrCodePreview: FC<{
 
 export default function Home() {
   const [scale, setScale] = useState(2);
-  const [qrSize, setQrSize] = useState(400);
+  const [qrSize, setQrSize] = useState(300);
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
   
@@ -1531,3 +1531,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
