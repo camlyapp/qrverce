@@ -1333,8 +1333,15 @@ export default function Home() {
 
             <div className="flex flex-col items-center justify-center gap-4 lg:col-span-3">
               <div
-                className="relative w-full aspect-square rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner"
-                style={{ maxWidth: qrSize }}
+                className="relative w-full aspect-square rounded-lg shadow-inner overflow-hidden"
+                style={{ 
+                    maxWidth: qrSize,
+                    backgroundSize: '20px 20px',
+                    backgroundColor: 'white',
+                    backgroundImage:
+                      'linear-gradient(to right, #f0f0f0 1px, transparent 1px),' +
+                      'linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)',
+                }}
               >
                  <div ref={qrWrapperRef} className="absolute inset-0" />
                  <canvas
