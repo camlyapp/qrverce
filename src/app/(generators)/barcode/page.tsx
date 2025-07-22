@@ -150,6 +150,11 @@ export default function BarcodePage() {
     const [isValid, setIsValid] = useState(true);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [downloadFormat, setDownloadFormat] = useState<"png" | "jpeg" | "webp">("png");
+    const [scale, setScale] = useState(2);
+
+    useEffect(() => {
+        setScale(window.devicePixelRatio || 2);
+    }, []);
 
     const updateOption = (key: keyof BarcodeOptions, value: any) => {
         setOptions(prev => ({...prev, [key]: value}));
@@ -170,15 +175,23 @@ export default function BarcodePage() {
     useEffect(() => {
         if (canvasRef.current) {
             try {
-                JsBarcode(canvasRef.current, barcodeData, {
+                 const scaledOptions = {
                     ...options,
+                    width: options.width * scale,
+                    height: options.height * scale,
+                    textMargin: options.textMargin * scale,
+                    fontSize: options.fontSize * scale,
+                    margin: options.margin * scale,
+                };
+                JsBarcode(canvasRef.current, barcodeData, {
+                    ...scaledOptions,
                     valid: (valid: boolean) => setIsValid(valid)
                 });
             } catch (error) {
                 setIsValid(false);
             }
         }
-    }, [barcodeData, options]);
+    }, [barcodeData, options, scale]);
 
      const handleDownload = () => {
         const canvas = canvasRef.current;
