@@ -323,9 +323,6 @@ const QrCodePreview: FC<{
     activeOverlay: TextOverlay | undefined;
     isDragging: boolean;
     handleMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
-    handleMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
-    handleMouseUp: () => void;
-    handleMouseLeave: () => void;
     overlays: TextOverlay[];
     updateOverlay: (id: number, updates: Partial<TextOverlay>) => void;
 }> = ({
@@ -336,9 +333,6 @@ const QrCodePreview: FC<{
     activeOverlay,
     isDragging,
     handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
-    handleMouseLeave,
     overlays,
     updateOverlay
 }) => (
@@ -365,9 +359,6 @@ const QrCodePreview: FC<{
                         isDragging ? "cursor-grabbing" : ""
                     )}
                     onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseLeave}
                  />
                  <canvas ref={finalCanvasRef} width={qrSize} height={qrSize} className="hidden" />
             </div>
@@ -683,17 +674,23 @@ export default function Home() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const mouseX = (e.clientX - rect.left) * (qrSize / rect.width);
+    const mouseY = (e.clientY - rect.top) * (qrSize / rect.height);
 
     const clickedOverlay = [...overlays].reverse().find(overlay => {
         const ctx = document.createElement('canvas').getContext('2d')!;
         ctx.font = `${overlay.fontStyle} ${overlay.fontWeight} ${overlay.fontSize}px "${overlay.fontFamily}"`;
         const textMetrics = ctx.measureText(overlay.text);
 
-        ctx.save();
-        ctx.translate(overlay.position.x, overlay.position.y);
-        ctx.rotate((overlay.rotation * Math.PI) / 180);
+        const cx = overlay.position.x;
+        const cy = overlay.position.y;
+        const angle = overlay.rotation * (Math.PI / 180);
+
+        const dx = mouseX - cx;
+        const dy = mouseY - cy;
+
+        const rotatedX = dx * Math.cos(-angle) - dy * Math.sin(-angle);
+        const rotatedY = dx * Math.sin(-angle) + dy * Math.cos(-angle);
         
         let x = 0;
         if(overlay.textAlign === 'center') x = -textMetrics.width / 2;
@@ -703,12 +700,7 @@ export default function Home() {
         const width = textMetrics.width;
         const height = (textMetrics.actualBoundingBoxAscent ?? overlay.fontSize / 2) + (textMetrics.actualBoundingBoxDescent ?? overlay.fontSize / 2);
 
-        ctx.beginPath();
-        ctx.rect(x, y, width, height);
-        ctx.restore();
-        
-        const isPointInPath = ctx.isPointInPath(mouseX, mouseY);
-        return isPointInPath;
+        return rotatedX >= x && rotatedX <= x + width && rotatedY >= y && rotatedY <= y + height;
     });
 
     if (clickedOverlay) {
@@ -719,39 +711,43 @@ export default function Home() {
       setActiveOverlayId(null);
     }
   };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging || !activeOverlay) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    setOverlays(overlays.map(o => o.id === activeOverlay.id ? { 
-        ...o, 
-        position: {
-            x: mouseX - dragStart.x,
-            y: mouseY - dragStart.y
-        }
-    } : o));
-    drawOverlaysOnly();
-  };
-
-  const handleMouseUp = () => {
-    if (isDragging) {
-        setIsDragging(false);
-        drawAllLayers();
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      drawAllLayers();
-    }
-  };
   
+    useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !activeOverlay) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) * (qrSize / rect.width);
+      const mouseY = (e.clientY - rect.top) * (qrSize / rect.height);
+  
+      setOverlays(overlays.map(o => o.id === activeOverlay.id ? { 
+          ...o, 
+          position: {
+              x: mouseX - dragStart.x,
+              y: mouseY - dragStart.y
+          }
+      } : o));
+      drawOverlaysOnly();
+    };
+
+    const handleMouseUp = () => {
+      if (isDragging) {
+          setIsDragging(false);
+          drawAllLayers();
+      }
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, activeOverlay, dragStart, overlays, qrSize]);
+
+
   const handleDownload = async () => {
     await drawAllLayers();
     const finalCanvas = finalCanvasRef.current;
@@ -876,9 +872,6 @@ export default function Home() {
                 activeOverlay={activeOverlay}
                 isDragging={isDragging}
                 handleMouseDown={handleMouseDown}
-                handleMouseMove={handleMouseMove}
-                handleMouseUp={handleMouseUp}
-                handleMouseLeave={handleMouseLeave}
                 overlays={overlays}
                 updateOverlay={updateOverlay}
               />
