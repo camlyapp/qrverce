@@ -43,32 +43,57 @@ import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 
+const PRESET_COLORS = [
+    "#000000", "#FFFFFF", "#FF5733", "#33FF57", "#3357FF", "#FF33A1",
+    "#A133FF", "#33FFA1", "#FFC300", "#C70039", "#900C3F", "#581845"
+];
+
 interface ColorInputProps {
   label: string;
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (e: React.ChangeEvent<HTMLInputElement> | string) => void;
   className?: string;
 }
 
 const ColorInput: FC<ColorInputProps> = ({ label, value, onChange, className }) => (
   <div className={cn("grid gap-2", className)}>
     <Label htmlFor={`color-input-${label.toLowerCase()}`}>{label}</Label>
-    <div className="relative h-10 w-full">
-      <div
-        className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md border"
-        style={{ background: value }}
-      >
-        <span className="font-mono text-sm mix-blend-difference text-white">
-          {value.toUpperCase()}
-        </span>
+    <div className="flex items-center gap-2">
+      <div className="relative h-10 w-16">
+        <div
+          className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md border"
+          style={{ background: value }}
+        >
+        </div>
+        <Input
+          id={`color-input-${label.toLowerCase()}`}
+          type="color"
+          value={value}
+          onChange={onChange}
+          className="h-full w-full cursor-pointer opacity-0"
+        />
       </div>
       <Input
-        id={`color-input-${label.toLowerCase()}`}
-        type="color"
+        type="text"
         value={value}
         onChange={onChange}
-        className="h-full w-full cursor-pointer opacity-0"
+        className="flex-grow"
+        placeholder="#000000"
       />
+    </div>
+     <div className="flex flex-wrap gap-2 mt-2">
+      {PRESET_COLORS.map(color => (
+        <button
+          key={color}
+          type="button"
+          className={cn(
+            "h-6 w-6 rounded-full border-2",
+            value.toLowerCase() === color.toLowerCase() ? "border-ring" : "border-transparent"
+          )}
+          style={{ backgroundColor: color }}
+          onClick={() => onChange(color)}
+        />
+      ))}
     </div>
   </div>
 );
@@ -419,6 +444,11 @@ export default function Home() {
 
   const activeOverlay = overlays.find(o => o.id === activeOverlayId);
   
+  const handleColorChange = (updater: (value: string) => void) => (e: React.ChangeEvent<HTMLInputElement> | string) => {
+    const value = typeof e === 'string' ? e : e.target.value;
+    updater(value);
+  }
+
   const updateQrOptions = (newOptions: Partial<Omit<QRCodeStylingOptions, 'data'>>) => {
     setQrOptions(prev => ({...prev, ...newOptions}));
   }
@@ -822,7 +852,7 @@ export default function Home() {
                 updateOverlay={updateOverlay}
               />
         </div>
-        <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col md:h-full">
+        <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col md:h-[calc(100vh-65px-41px)]">
             <Tabs defaultValue="content" className="flex-grow flex flex-col md:overflow-hidden">
                 <TabsList className="w-full grid grid-cols-2 rounded-none h-auto shrink-0">
                     <TabsTrigger value="content" className="py-3 rounded-none">Content</TabsTrigger>
@@ -1168,8 +1198,8 @@ export default function Home() {
                                   </div>
                                   {dotsGradient.enabled ? (
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border p-4 rounded-md">
-                                          <ColorInput label="Color 1" value={dotsGradient.color1} onChange={(e) => setDotsGradient(p => ({ ...p, color1: e.target.value }))} />
-                                          <ColorInput label="Color 2" value={dotsGradient.color2} onChange={(e) => setDotsGradient(p => ({ ...p, color2: e.target.value }))} />
+                                          <ColorInput label="Color 1" value={dotsGradient.color1} onChange={handleColorChange(v => setDotsGradient(p => ({ ...p, color1: v })))} />
+                                          <ColorInput label="Color 2" value={dotsGradient.color2} onChange={handleColorChange(v => setDotsGradient(p => ({ ...p, color2: v })))} />
                                           <div className="grid gap-2">
                                               <Label>Type</Label>
                                               <Select value={dotsGradient.type} onValueChange={(v: 'linear' | 'radial') => setDotsGradient(p => ({ ...p, type: v }))}>
@@ -1186,15 +1216,15 @@ export default function Home() {
                                           </div>
                                       </div>
                                   ) : (
-                                      <ColorInput label="Dots Color" value={qrOptions.dotsOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('dotsOptions', { color: e.target.value })} className="mt-4" />
+                                      <ColorInput label="Dots Color" value={qrOptions.dotsOptions?.color ?? '#000000'} onChange={handleColorChange(v => updateNestedQrOptions('dotsOptions', { color: v }))} className="mt-4" />
                                   )}
                               </div>
                               <Separator/>
                                <div>
                                   <Label className="font-medium text-base">Corners</Label>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                      <ColorInput label="Corner Squares" value={qrOptions.cornersSquareOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('cornersSquareOptions', { color: e.target.value })} />
-                                      <ColorInput label="Corner Dots" value={qrOptions.cornersDotOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('cornersDotOptions', { color: e.target.value })} />
+                                      <ColorInput label="Corner Squares" value={qrOptions.cornersSquareOptions?.color ?? '#000000'} onChange={handleColorChange(v => updateNestedQrOptions('cornersSquareOptions', { color: v }))} />
+                                      <ColorInput label="Corner Dots" value={qrOptions.cornersDotOptions?.color ?? '#000000'} onChange={handleColorChange(v => updateNestedQrOptions('cornersDotOptions', { color: v }))} />
                                   </div>
                               </div>
                               <Separator/>
@@ -1206,8 +1236,8 @@ export default function Home() {
                                   </div>
                                   {backgroundGradient.enabled ? (
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border p-4 rounded-md">
-                                          <ColorInput label="Color 1" value={backgroundGradient.color1} onChange={(e) => setBackgroundGradient(p => ({ ...p, color1: e.target.value }))} />
-                                          <ColorInput label="Color 2" value={backgroundGradient.color2} onChange={(e) => setBackgroundGradient(p => ({ ...p, color2: e.target.value }))} />
+                                          <ColorInput label="Color 1" value={backgroundGradient.color1} onChange={handleColorChange(v => setBackgroundGradient(p => ({ ...p, color1: v })))} />
+                                          <ColorInput label="Color 2" value={backgroundGradient.color2} onChange={handleColorChange(v => setBackgroundGradient(p => ({ ...p, color2: v })))} />
                                           <div className="grid gap-2">
                                               <Label>Type</Label>
                                               <Select value={backgroundGradient.type} onValueChange={(v: 'linear' | 'radial') => setBackgroundGradient(p => ({ ...p, type: v }))}>
@@ -1224,7 +1254,7 @@ export default function Home() {
                                           </div>
                                       </div>
                                   ) : (
-                                     <ColorInput label="Background Color" value={qrOptions.backgroundOptions?.color ?? '#ffffff'} onChange={(e) => updateNestedQrOptions('backgroundOptions', { color: e.target.value })} className="mt-4"/>
+                                     <ColorInput label="Background Color" value={qrOptions.backgroundOptions?.color ?? '#ffffff'} onChange={handleColorChange(v => updateNestedQrOptions('backgroundOptions', { color: v }))} className="mt-4"/>
                                   )}
                               </div>
                             </AccordionContent>
@@ -1365,7 +1395,7 @@ export default function Home() {
                                                     <ColorInput
                                                      label="Color"
                                                      value={activeOverlay.color}
-                                                     onChange={(e) => updateOverlay(activeOverlay.id, {color: e.target.value})}
+                                                     onChange={handleColorChange(v => updateOverlay(activeOverlay.id, {color: v}))}
                                                    />
                                                  </div>
                                                   <div className="grid gap-2">
