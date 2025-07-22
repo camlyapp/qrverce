@@ -51,51 +51,6 @@ const PRESET_COLORS = [
     "#A133FF", "#33FFA1", "#FFC300", "#C70039", "#900C3F", "#581845"
 ];
 
-const PRESET_DESIGNS: { name: string, design: GenerateDesignOutput }[] = [
-    {
-        name: "Classic Business",
-        design: {
-            colors: { background: '#FFFFFF', dots: '#000000', corner: '#000000' },
-            shapes: { dots: 'square', corners: 'square' },
-        },
-    },
-    {
-        name: "Modern Tech",
-        design: {
-            colors: { background: '#F0F8FF', dots: '#0A74DA', corner: '#053B6D' },
-            shapes: { dots: 'rounded', corners: 'dot' },
-        },
-    },
-    {
-        name: "Elegant Wedding",
-        design: {
-            colors: { background: '#FFF7F7', dots: '#8B5757', corner: '#6D4444' },
-            shapes: { dots: 'classy-rounded', corners: 'extra-rounded' },
-        },
-    },
-    {
-        name: "Playful & Bright",
-        design: {
-            colors: { background: '#FFFDE7', dots: '#FF6F61', corner: '#FFC107' },
-            shapes: { dots: 'dots', corners: 'dot' },
-        },
-    },
-    {
-        name: "Eco Green",
-        design: {
-            colors: { background: '#F0FFF4', dots: '#2E7D32', corner: '#1B5E20' },
-            shapes: { dots: 'classy', corners: 'square' },
-        },
-    },
-    {
-        name: "Minimalist Gray",
-        design: {
-            colors: { background: '#F5F5F5', dots: '#424242', corner: '#212121' },
-            shapes: { dots: 'square', corners: 'square' },
-        }
-    }
-];
-
 interface ColorInputProps {
   label: string;
   value: string;
@@ -1368,49 +1323,7 @@ export default function QrCodePage() {
                 </TabsContent>
                 <TabsContent value="design" className="flex-grow md:overflow-y-auto">
                    <ScrollArea className="h-full">
-                       <Accordion type="single" defaultValue="templates" collapsible className="w-full">
-                           <AccordionItem value="templates" className="border-b-0">
-                            <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
-                              <div className="flex items-center">
-                                <LayoutTemplate className="mr-2 h-5 w-5 text-accent" />
-                                Templates
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="px-4 sm:px-6">
-                               <ScrollArea>
-                                <div className="flex space-x-4 pb-4">
-                                  {PRESET_DESIGNS.map(preset => (
-                                    <div key={preset.name} className="flex-shrink-0 w-[120px] space-y-2">
-                                      <button
-                                        className="w-full aspect-square rounded-md border-2 border-transparent hover:border-primary focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center justify-center p-2"
-                                        style={{ background: preset.design.colors.background }}
-                                        onClick={() => applyAiDesign(preset.design)}
-                                      >
-                                        <div className="grid grid-cols-2 gap-1 w-full h-full">
-                                          {Array.from({length: 4}).map((_, i) => {
-                                            const dotType = preset.design.shapes.dots;
-                                            let borderRadius = '0';
-                                            if (dotType === 'dots' || dotType === 'rounded' || dotType === 'classy-rounded') {
-                                              borderRadius = '50%';
-                                            } else if (dotType === 'extra-rounded') {
-                                              borderRadius = '8px';
-                                            }
-                                            
-                                            return <div key={i} style={{
-                                              background: preset.design.colors.dots,
-                                              borderRadius
-                                            }}/>
-                                          })}
-                                        </div>
-                                      </button>
-                                      <p className="text-xs text-center font-medium text-muted-foreground">{preset.name}</p>
-                                    </div>
-                                  ))}
-                                </div>
-                                <ScrollBar orientation="horizontal" />
-                              </ScrollArea>
-                            </AccordionContent>
-                          </AccordionItem>
+                       <Accordion type="single" defaultValue="ai-magic" collapsible className="w-full">
                           <AccordionItem value="ai-magic" className="border-b-0">
                             <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
                               <div className="flex items-center">
