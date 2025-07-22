@@ -335,8 +335,10 @@ const QrCodePreview: FC<{
     <Card className="flex-grow flex flex-col shadow-lg">
         <CardContent className="p-4 sm:p-6 flex-grow flex items-center justify-center">
             <div
-                className="relative w-full max-w-[500px] aspect-square rounded-lg border bg-card shadow-inner overflow-hidden"
+                className="relative aspect-square rounded-lg border bg-card shadow-inner overflow-hidden"
                 style={{
+                    width: qrSize,
+                    height: qrSize,
                     backgroundSize: '20px 20px',
                     backgroundColor: 'white',
                     backgroundImage:
@@ -350,7 +352,7 @@ const QrCodePreview: FC<{
                     width={qrSize * scale}
                     height={qrSize * scale}
                     className={cn(
-                        "absolute top-0 left-0 w-full h-full",
+                        "absolute top-0 left-0",
                         activeOverlay ? "cursor-grab" : "",
                         isDragging ? "cursor-grabbing" : ""
                     )}
@@ -658,7 +660,7 @@ export default function Home() {
   
   useEffect(() => {
     drawOverlaysOnly();
-  }, [overlays]);
+  }, [overlays, activeOverlayId]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
