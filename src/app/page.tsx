@@ -323,7 +323,7 @@ export default function Home() {
 
   const [dotsGradient, setDotsGradient] = useState<GradientState>(defaultGradientState);
   const [backgroundGradient, setBackgroundGradient] = useState<GradientState>({
-    enabled: true,
+    enabled: false,
     type: 'linear',
     color1: '#ffffff',
     color2: '#e9e9e9',
@@ -699,7 +699,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-6 md:p-8">
-      <Card className="w-full max-w-6xl overflow-hidden rounded-xl shadow-2xl">
+      <Card className="w-full max-w-6xl overflow-hidden rounded-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.3)]">
         <CardHeader className="bg-card/50">
           <CardTitle className="font-headline text-3xl font-bold tracking-tight text-primary md:text-4xl">
             QRCodeMint
