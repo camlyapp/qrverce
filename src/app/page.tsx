@@ -1322,17 +1322,25 @@ export default function Home() {
                                   {PRESET_DESIGNS.map(preset => (
                                     <div key={preset.name} className="flex-shrink-0 w-[120px] space-y-2">
                                       <button
-                                        className="w-full aspect-square rounded-md border-2 border-transparent hover:border-primary focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        className="w-full aspect-square rounded-md border-2 border-transparent hover:border-primary focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center justify-center p-2"
                                         style={{ background: preset.design.colors.background }}
                                         onClick={() => applyAiDesign(preset.design)}
                                       >
-                                        <div className="w-full h-full flex items-center justify-center">
-                                          <div style={{
-                                            width: '50%',
-                                            height: '50%',
-                                            background: preset.design.colors.dots,
-                                            borderRadius: preset.design.shapes.dots.includes('round') ? '50%' : '0'
-                                          }}/>
+                                        <div className="grid grid-cols-2 gap-1 w-full h-full">
+                                          {Array.from({length: 4}).map((_, i) => {
+                                            const dotType = preset.design.shapes.dots;
+                                            let borderRadius = '0';
+                                            if (dotType === 'dots' || dotType === 'rounded' || dotType === 'classy-rounded') {
+                                              borderRadius = '50%';
+                                            } else if (dotType === 'extra-rounded') {
+                                              borderRadius = '8px';
+                                            }
+                                            
+                                            return <div key={i} style={{
+                                              background: preset.design.colors.dots,
+                                              borderRadius
+                                            }}/>
+                                          })}
                                         </div>
                                       </button>
                                       <p className="text-xs text-center font-medium text-muted-foreground">{preset.name}</p>
