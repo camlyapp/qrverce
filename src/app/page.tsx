@@ -323,8 +323,8 @@ export default function Home() {
 
   const [dotsGradient, setDotsGradient] = useState<GradientState>(defaultGradientState);
   const [backgroundGradient, setBackgroundGradient] = useState<GradientState>({
+    ...defaultGradientState,
     enabled: false,
-    type: 'linear',
     color1: '#ffffff',
     color2: '#e9e9e9',
     rotation: 45,
@@ -699,7 +699,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-6 md:p-8">
-      <Card className="w-full max-w-6xl overflow-hidden rounded-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.3)]">
+      <Card className="w-full max-w-7xl overflow-hidden rounded-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.3)]">
         <CardHeader className="bg-card/50">
           <CardTitle className="font-headline text-3xl font-bold tracking-tight text-primary md:text-4xl">
             QRCodeMint
@@ -709,8 +709,8 @@ export default function Home() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-8">
-            <div className="flex flex-col gap-6 lg:col-span-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+            <div className="flex flex-col gap-6">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <ScrollArea className="w-full whitespace-nowrap rounded-md">
                     <TabsList className="w-max">
@@ -735,7 +735,7 @@ export default function Home() {
                     </TabsList>
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
-                <div className="mt-4 max-h-[400px] overflow-y-auto pr-2">
+                <div className="mt-4 max-h-[calc(100vh-22rem)] overflow-y-auto pr-2">
                 <TabsContent value="text">
                     <div className="grid gap-2">
                       <Label htmlFor="text-input" className="font-medium">
@@ -1026,9 +1026,56 @@ export default function Home() {
                 </TabsContent>
                 </div>
               </Tabs>
+            </div>
 
-
-              <Accordion type="multiple" defaultValue={['colors']} className="w-full">
+            <div className="flex flex-col items-center justify-start gap-6">
+              <div
+                className="relative w-full aspect-square rounded-lg shadow-inner overflow-hidden"
+                style={{ 
+                    maxWidth: Math.min(qrSize, 500),
+                    backgroundSize: '20px 20px',
+                    backgroundColor: 'white',
+                    backgroundImage:
+                      'linear-gradient(to right, #f0f0f0 1px, transparent 1px),' +
+                      'linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)',
+                }}
+              >
+                 <div ref={qrWrapperRef} className="absolute inset-0" />
+                 <canvas
+                    ref={canvasRef}
+                    width={qrSize}
+                    height={qrSize}
+                    className={cn(
+                        "absolute top-0 left-0 w-full h-full",
+                        activeOverlay ? "cursor-grab" : "",
+                        isDragging ? "cursor-grabbing" : ""
+                    )}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                 />
+                 <canvas ref={finalCanvasRef} width={qrSize} height={qrSize} className="hidden" />
+              </div>
+              {activeOverlay && (
+                 <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground sm:gap-4">
+                    <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {position:{x:qrSize/2, y:qrSize/2}})}>
+                        <Move className="mr-2 h-4 w-4" /> Reset Position
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {rotation: 0})}>
+                        <RotateCcw className="mr-2 h-4 w-4" /> Reset Rotation
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => {
+                        let newRotation = activeOverlay.rotation + 90;
+                        if (newRotation > 180) newRotation -= 360;
+                        updateOverlay(activeOverlay.id, {rotation: newRotation});
+                    }}>
+                        <RotateCw className="mr-2 h-4 w-4" /> Rotate 90°
+                    </Button>
+                 </div>
+              )}
+               <div className="w-full max-h-[calc(100vh-22rem-100px)] overflow-y-auto pr-2">
+                <Accordion type="multiple" defaultValue={['colors']} className="w-full">
                 <AccordionItem value="colors">
                   <AccordionTrigger className="text-lg font-semibold">
                     <div className="flex items-center">
@@ -1336,53 +1383,6 @@ export default function Home() {
                 </AccordionItem>
               </Accordion>
             </div>
-
-            <div className="flex flex-col items-center justify-center gap-4 lg:col-span-3">
-              <div
-                className="relative w-full aspect-square rounded-lg shadow-inner overflow-hidden"
-                style={{ 
-                    maxWidth: qrSize,
-                    backgroundSize: '20px 20px',
-                    backgroundColor: 'white',
-                    backgroundImage:
-                      'linear-gradient(to right, #f0f0f0 1px, transparent 1px),' +
-                      'linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)',
-                }}
-              >
-                 <div ref={qrWrapperRef} className="absolute inset-0" />
-                 <canvas
-                    ref={canvasRef}
-                    width={qrSize}
-                    height={qrSize}
-                    className={cn(
-                        "absolute top-0 left-0 w-full h-full",
-                        activeOverlay ? "cursor-grab" : "",
-                        isDragging ? "cursor-grabbing" : ""
-                    )}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                 />
-                 <canvas ref={finalCanvasRef} width={qrSize} height={qrSize} className="hidden" />
-              </div>
-              {activeOverlay && (
-                 <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground sm:gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {position:{x:qrSize/2, y:qrSize/2}})}>
-                        <Move className="mr-2 h-4 w-4" /> Reset Position
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {rotation: 0})}>
-                        <RotateCcw className="mr-2 h-4 w-4" /> Reset Rotation
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => {
-                        let newRotation = activeOverlay.rotation + 90;
-                        if (newRotation > 180) newRotation -= 360;
-                        updateOverlay(activeOverlay.id, {rotation: newRotation});
-                    }}>
-                        <RotateCw className="mr-2 h-4 w-4" /> Rotate 90°
-                    </Button>
-                 </div>
-              )}
             </div>
           </div>
         </CardContent>
@@ -1419,3 +1419,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
