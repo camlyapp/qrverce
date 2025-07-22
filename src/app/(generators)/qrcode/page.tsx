@@ -925,10 +925,7 @@ export default function QrCodePage() {
       <div className="flex-1 grid md:grid-cols-12 gap-px bg-border md:h-[calc(100vh-129px)]">
         <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 items-center justify-center relative">
             <div className="absolute top-4 right-4 flex items-center gap-2 sm:gap-4">
-              <div className="flex items-center gap-2 sm:gap-4">
-                <Label htmlFor="format-select" className="flex-shrink-0 text-sm font-medium">
-                  Format:
-                </Label>
+              <div className="flex items-center gap-2">
                 <Select
                   value={downloadFormat}
                   onValueChange={(v) => setDownloadFormat(v as FileExtension)}
