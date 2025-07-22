@@ -333,6 +333,16 @@ export default function BarcodePage() {
                                           <SelectItem value="serif">Serif</SelectItem>
                                           <SelectItem value="fantasy">Fantasy</SelectItem>
                                           <SelectItem value="cursive">Cursive</SelectItem>
+                                          <SelectItem value="Roboto">Roboto</SelectItem>
+                                          <SelectItem value="Open Sans">Open Sans</SelectItem>
+                                          <SelectItem value="Lato">Lato</SelectItem>
+                                          <SelectItem value="Montserrat">Montserrat</SelectItem>
+                                          <SelectItem value="Oswald">Oswald</SelectItem>
+                                          <SelectItem value="Raleway">Raleway</SelectItem>
+                                          <SelectItem value="Playfair Display">Playfair Display</SelectItem>
+                                          <SelectItem value="Dancing Script">Dancing Script</SelectItem>
+                                          <SelectItem value="Pacifico">Pacifico</SelectItem>
+                                          <SelectItem value="Lobster">Lobster</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </div>
