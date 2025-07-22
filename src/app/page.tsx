@@ -322,7 +322,13 @@ export default function Home() {
   const [logo, setLogo] = useState<string | null>(null);
 
   const [dotsGradient, setDotsGradient] = useState<GradientState>(defaultGradientState);
-  const [backgroundGradient, setBackgroundGradient] = useState<GradientState>({ ...defaultGradientState, color1: '#ffffff', color2: '#e9e9e9' });
+  const [backgroundGradient, setBackgroundGradient] = useState<GradientState>({
+    enabled: true,
+    type: 'linear',
+    color1: '#ffffff',
+    color2: '#e9e9e9',
+    rotation: 45,
+  });
 
 
   const qrCodeRef = useRef<QRCodeStyling | null>(null);
