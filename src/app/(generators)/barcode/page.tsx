@@ -154,6 +154,30 @@ export default function BarcodePage() {
 
     useEffect(() => {
         setScale(window.devicePixelRatio || 2);
+        
+        // Load fonts when component mounts
+        const fontLink = document.createElement('link');
+        fontLink.href = "https://fonts.googleapis.com/css2?family=Roboto&family=Open+Sans&family=Lato&family=Montserrat&family=Oswald&family=Raleway&family=Playfair+Display&family=Dancing+Script&family=Pacifico&family=Lobster&display=swap";
+        fontLink.rel = 'stylesheet';
+        
+        const preconnect1 = document.createElement('link');
+        preconnect1.href = "https://fonts.googleapis.com";
+        preconnect1.rel = 'preconnect';
+
+        const preconnect2 = document.createElement('link');
+        preconnect2.href = "https://fonts.gstatic.com";
+        preconnect2.rel = 'preconnect';
+        preconnect2.crossOrigin = "anonymous";
+        
+        document.head.appendChild(preconnect1);
+        document.head.appendChild(preconnect2);
+        document.head.appendChild(fontLink);
+
+        return () => {
+            document.head.removeChild(fontLink);
+            document.head.removeChild(preconnect1);
+            document.head.removeChild(preconnect2);
+        }
     }, []);
 
     const updateOption = (key: keyof BarcodeOptions, value: any) => {
