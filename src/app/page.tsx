@@ -601,7 +601,7 @@ export default function Home() {
           ...qrOptions,
           width: qrSize * scale,
           height: qrSize * scale,
-          margin: (qrOptions.margin ?? 0) * scale / 10,
+          margin: (qrOptions.margin ?? 0) * scale,
           data: qrContent,
           image: logo ?? undefined,
           dotsOptions: {
