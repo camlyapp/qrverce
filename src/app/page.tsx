@@ -264,9 +264,11 @@ const defaultQrOptions: QRCodeStylingOptions = {
     },
     cornersSquareOptions: {
         type: 'extra-rounded',
+        color: '#000000',
     },
     cornersDotOptions: {
         type: 'dot',
+        color: '#000000',
     },
     imageOptions: {
         hideBackgroundDots: true,
@@ -1054,8 +1056,16 @@ export default function Home() {
                                 </div>
                             </div>
                         ) : (
-                            <ColorInput label="Foreground" value={qrOptions.dotsOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('dotsOptions', { color: e.target.value })} className="mt-4" />
+                            <ColorInput label="Dots Color" value={qrOptions.dotsOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('dotsOptions', { color: e.target.value })} className="mt-4" />
                         )}
+                    </div>
+                    <Separator/>
+                     <div>
+                        <Label className="font-medium text-base">Corners</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                            <ColorInput label="Corner Squares" value={qrOptions.cornersSquareOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('cornersSquareOptions', { color: e.target.value })} />
+                            <ColorInput label="Corner Dots" value={qrOptions.cornersDotOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('cornersDotOptions', { color: e.target.value })} />
+                        </div>
                     </div>
                     <Separator/>
                      <div>
@@ -1084,7 +1094,7 @@ export default function Home() {
                                 </div>
                             </div>
                         ) : (
-                           <ColorInput label="Background" value={qrOptions.backgroundOptions?.color ?? '#ffffff'} onChange={(e) => updateNestedQrOptions('backgroundOptions', { color: e.target.value })} className="mt-4"/>
+                           <ColorInput label="Background Color" value={qrOptions.backgroundOptions?.color ?? '#ffffff'} onChange={(e) => updateNestedQrOptions('backgroundOptions', { color: e.target.value })} className="mt-4"/>
                         )}
                     </div>
                   </AccordionContent>
