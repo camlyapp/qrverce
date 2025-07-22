@@ -52,6 +52,7 @@ const logoGenerationPrompt = ai.definePrompt({
     name: 'generateLogoPrompt',
     input: { schema: z.string() },
     prompt: `Generate a simple, iconic logo for the center of a QR code based on this theme: {{{_input}}}. The logo should be a PNG with a transparent background.`,
+    model: 'googleai/gemini-2.0-flash-preview-image-generation',
     config: {
       responseModalities: ['TEXT', 'IMAGE'],
     },
