@@ -436,7 +436,8 @@ export default function Home() {
   const qrWrapperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const finalCanvasRef = useRef<HTMLCanvasElement>(null);
-  
+  const qrImageRef = useRef<HTMLImageElement | null>(null);
+
   const [overlays, setOverlays] = useState<TextOverlay[]>([]);
   const [activeOverlayId, setActiveOverlayId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -503,6 +504,15 @@ export default function Home() {
       ctx.fillText(overlay.text, 0, 0);
       ctx.restore();
   };
+
+  const drawOverlaysOnly = () => {
+    const visibleCtx = canvasRef.current?.getContext("2d");
+    if (!visibleCtx || !qrImageRef.current) return;
+    
+    visibleCtx.clearRect(0, 0, qrSize, qrSize);
+    visibleCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
+    overlays.forEach(o => drawOverlay(visibleCtx, o));
+  }
   
   const drawAllLayers = async () => {
     const finalCtx = finalCanvasRef.current?.getContext("2d");
@@ -516,15 +526,15 @@ export default function Home() {
     const qrDataUrl = await qrCodeRef.current.getRawData('png');
     if (!qrDataUrl) return;
 
-    const qrImage = await new Promise<HTMLImageElement>(resolve => {
+    qrImageRef.current = await new Promise<HTMLImageElement>(resolve => {
         const img = new window.Image();
         img.onload = () => resolve(img);
         const url = URL.createObjectURL(qrDataUrl as Blob);
         img.src = url;
     });
 
-    finalCtx.drawImage(qrImage, 0, 0, qrSize, qrSize);
-    visibleCtx.drawImage(qrImage, 0, 0, qrSize, qrSize);
+    finalCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
+    visibleCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
     
     overlays.forEach(o => {
       drawOverlay(finalCtx, o);
@@ -697,7 +707,8 @@ export default function Home() {
         ctx.rect(x, y, width, height);
         ctx.restore();
         
-        return ctx.isPointInPath(mouseX, mouseY);
+        const isPointInPath = ctx.isPointInPath(mouseX, mouseY);
+        return isPointInPath;
     });
 
     if (clickedOverlay) {
@@ -717,16 +728,21 @@ export default function Home() {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    updateOverlay(activeOverlay.id, {
+    setOverlays(overlays.map(o => o.id === activeOverlay.id ? { 
+        ...o, 
         position: {
             x: mouseX - dragStart.x,
             y: mouseY - dragStart.y
         }
-    });
+    } : o));
+    drawOverlaysOnly();
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    if (isDragging) {
+        setIsDragging(false);
+        drawAllLayers();
+    }
   };
   
   const handleDownload = async () => {
