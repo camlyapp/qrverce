@@ -768,8 +768,8 @@ export default function Home() {
 
 
   return (
-    <div className="flex h-screen w-full flex-col bg-muted/40">
-       <header className="flex h-16 items-center border-b bg-background px-4 sm:px-6 shrink-0">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
            <div className="flex items-center gap-2">
               <Wand2 className="h-6 w-6 text-primary" />
               <h1 className="font-headline text-xl font-bold tracking-tight text-primary">
@@ -805,7 +805,7 @@ export default function Home() {
               </Button>
             </div>
       </header>
-      <main className="flex-1 flex flex-col md:grid md:grid-cols-12 gap-px bg-border overflow-hidden">
+      <main className="flex-1 flex flex-col md:grid md:grid-cols-12 gap-px bg-border overflow-auto">
         <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6">
             <QrCodePreview
                 qrSize={qrSize}
@@ -1460,6 +1460,9 @@ export default function Home() {
             </Tabs>
         </div>
       </main>
+      <footer className="border-t bg-background p-4 text-center text-sm text-muted-foreground">
+        © {new Date().getFullYear()} QRCodeMint. All rights reserved.
+      </footer>
     </div>
   );
 }
