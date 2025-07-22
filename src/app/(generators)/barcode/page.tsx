@@ -92,7 +92,7 @@ interface BarcodeOptions {
     displayValue: boolean;
     text: string;
     textAlign: 'left' | 'center' | 'right';
-    textPosition: 'top' | 'bottom';
+    textPosition: 'bottom' | 'top';
     textMargin: number;
     fontSize: number;
     background: string;
@@ -169,15 +169,12 @@ export default function BarcodePage() {
       <div className="flex-1 grid md:grid-cols-12 gap-px bg-border md:h-[calc(100vh-129px)]">
         <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 items-center justify-center relative">
             <div className="absolute top-4 right-4 flex items-center gap-2 sm:gap-4">
-              <div className="flex items-center gap-2 sm:gap-4">
-                <Label htmlFor="format-select" className="flex-shrink-0 text-sm font-medium">
-                  Format:
-                </Label>
+              <div className="flex items-center gap-2">
                 <Select
                   value={downloadFormat}
                   onValueChange={(v) => setDownloadFormat(v as "png" | "jpeg" | "webp")}
                 >
-                  <SelectTrigger id="format-select" className="w-[100px]">
+                  <SelectTrigger className="w-[100px] h-9 text-xs">
                     <SelectValue placeholder="Format" />
                   </SelectTrigger>
                   <SelectContent>
@@ -186,11 +183,11 @@ export default function BarcodePage() {
                     <SelectItem value="webp">WEBP</SelectItem>
                   </SelectContent>
                 </Select>
+                 <Button onClick={handleDownload} className="w-full sm:w-auto" size="sm" disabled={!isValid}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                 </Button>
               </div>
-              <Button onClick={handleDownload} className="w-full sm:w-auto" disabled={!isValid}>
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </Button>
             </div>
             <Card className="w-full max-w-2xl shadow-lg">
                 <CardHeader>
@@ -301,6 +298,16 @@ export default function BarcodePage() {
                                          <ToggleGroupItem value="center" aria-label="Align center"><AlignCenter className="h-4 w-4" /></ToggleGroupItem>
                                          <ToggleGroupItem value="right" aria-label="Align right"><AlignRight className="h-4 w-4" /></ToggleGroupItem>
                                        </ToggleGroup>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label>Text Position</Label>
+                                        <Select value={options.textPosition} onValueChange={(v: 'bottom' | 'top') => updateOption('textPosition', v)}>
+                                            <SelectTrigger><SelectValue/></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="bottom">Bottom</SelectItem>
+                                                <SelectItem value="top">Top</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label>Font Style</Label>
