@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw, Wand2, Loader, LayoutTemplate, Building, Briefcase } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw, Wand2, Loader, LayoutTemplate, Building, Briefcase, File as FileIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateDesign, type GenerateDesignOutput } from "@/ai/flows/generate-design-flow";
 
@@ -246,6 +246,11 @@ const plainTextInitialState = {
   text: '',
 };
 
+const pdfInitialState = {
+  dataUrl: '',
+  fileName: '',
+};
+
 
 const generateVCardString = (vCardData: typeof vCardInitialState): string => {
   const parts = [
@@ -443,6 +448,7 @@ export default function Home() {
   const [facebookData, setFacebookData] = useState(socialInitialState);
   const [instagramData, setInstagramData] = useState(socialInitialState);
   const [plainTextData, setPlainTextData] = useState(plainTextInitialState);
+  const [pdfData, setPdfData] = useState(pdfInitialState);
 
   const [qrOptions, setQrOptions] = useState<Omit<QRCodeStylingOptions, 'data'>>(defaultQrOptions);
   const [logo, setLogo] = useState<string | null>(null);
@@ -642,12 +648,15 @@ export default function Home() {
       case 'plaintext':
         newContent = plainTextData.text;
         break;
+      case 'pdf':
+        newContent = pdfData.dataUrl;
+        break;
     }
     setQrContent(newContent);
   }, [
     activeContentType, textData, vCardData, meCardData, wifiData, phoneData, smsData, 
     emailData, geoData, eventData, whatsappData, skypeData, zoomData, 
-    paypalData, bitcoinData, twitterData, facebookData, instagramData, plainTextData
+    paypalData, bitcoinData, twitterData, facebookData, instagramData, plainTextData, pdfData
   ]);
 
 
@@ -890,6 +899,24 @@ export default function Home() {
   const handleBitcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => setBitcoinData(p => ({...p, [e.target.name]: e.target.value}));
   const handleSocialChange = (setter: React.Dispatch<React.SetStateAction<typeof socialInitialState>>) => (e: React.ChangeEvent<HTMLInputElement>) => setter({username: e.target.value});
   const handlePlainTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setPlainTextData({text: e.target.value});
+  
+  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setPdfData({ dataUrl, fileName: file.name });
+        toast({ title: 'PDF Loaded', description: 'The QR code now contains your PDF file.' });
+      };
+      reader.onerror = () => {
+        toast({ title: 'Error', description: 'Failed to read the PDF file.', variant: 'destructive' });
+      };
+      reader.readAsDataURL(file);
+    } else if (file) {
+      toast({ title: 'Invalid File', description: 'Please select a valid PDF file.', variant: 'destructive' });
+    }
+  };
 
   const applyAiDesign = (design: GenerateDesignOutput) => {
     if (design.colors.dots) {
@@ -1003,6 +1030,7 @@ export default function Home() {
                                 <SelectContent>
                                     <SelectItem value="text"><div className="flex items-center"><LinkIcon className="mr-2 h-4 w-4"/>URL</div></SelectItem>
                                     <SelectItem value="plaintext"><div className="flex items-center"><FileText className="mr-2 h-4 w-4"/>Text</div></SelectItem>
+                                    <SelectItem value="pdf"><div className="flex items-center"><FileIcon className="mr-2 h-4 w-4"/>PDF</div></SelectItem>
                                     <SelectItem value="vcard"><div className="flex items-center"><Contact className="mr-2 h-4 w-4"/>vCard Contact</div></SelectItem>
                                     <SelectItem value="mecard"><div className="flex items-center"><User className="mr-2 h-4 w-4"/>MeCard</div></SelectItem>
                                     <SelectItem value="wifi"><div className="flex items-center"><Wifi className="mr-2 h-4 w-4"/>WiFi Network</div></SelectItem>
@@ -1039,6 +1067,37 @@ export default function Home() {
                                   <div className="grid gap-2">
                                     <Label htmlFor="plaintext-input">Plain Text</Label>
                                     <Textarea id="plaintext-input" value={plainTextData.text} onChange={handlePlainTextChange} placeholder="Enter any text here..."/>
+                                  </div>
+                                )}
+                                {activeContentType === 'pdf' && (
+                                  <div className="grid gap-4">
+                                    <Label>PDF File</Label>
+                                    {pdfData.fileName ? (
+                                      <div className="flex items-center justify-between p-2.5 pl-3 border rounded-md bg-muted/50">
+                                        <div className="flex items-center gap-2 truncate">
+                                          <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                          <span className="text-sm truncate">{pdfData.fileName}</span>
+                                        </div>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="h-7 w-7"
+                                          onClick={() => setPdfData(pdfInitialState)}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                          <span className="sr-only">Remove PDF</span>
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <Input 
+                                        type="file" 
+                                        accept="application/pdf"
+                                        onChange={handlePdfUpload} 
+                                      />
+                                    )}
+                                    <p className="text-xs text-muted-foreground">
+                                      The PDF will be embedded directly in the QR code. Large files will result in a very dense QR code that may be hard to scan.
+                                    </p>
                                   </div>
                                 )}
                                 {activeContentType === 'vcard' && (
@@ -1703,3 +1762,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
