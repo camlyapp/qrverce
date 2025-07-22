@@ -34,6 +34,30 @@ const SUPPORTED_FORMATS = [
     "pharmacode", "codabar"
 ];
 
+const FORMAT_EXAMPLES: { [key: string]: string } = {
+    "CODE128": "Example 1234",
+    "CODE128A": "EXAMPLE",
+    "CODE128B": "Example 1234",
+    "CODE128C": "12345678",
+    "EAN13": "978020137962",
+    "EAN8": "1234567",
+    "EAN5": "12345",
+    "EAN2": "12",
+    "UPC": "01234567890",
+    "UPCE": "0123456",
+    "CODE39": "CODE39 EXAMPLE",
+    "ITF": "123456",
+    "ITF14": "1234567890123",
+    "MSI": "123456789",
+    "MSI10": "123456789",
+    "MSI11": "123456789",
+    "MSI1010": "123456789",
+    "MSI1110": "123456789",
+    "pharmacode": "1234",
+    "codabar": "A123456789B"
+};
+
+
 interface ColorInputProps {
   label: string;
   value: string;
@@ -130,6 +154,14 @@ export default function BarcodePage() {
     const updateOption = (key: keyof BarcodeOptions, value: any) => {
         setOptions(prev => ({...prev, [key]: value}));
     }
+
+    const handleFormatChange = (newFormat: string) => {
+        updateOption('format', newFormat);
+        if (FORMAT_EXAMPLES[newFormat]) {
+            setBarcodeData(FORMAT_EXAMPLES[newFormat]);
+        }
+    };
+
      const handleColorChange = (updater: (value: string) => void) => (e: React.ChangeEvent<HTMLInputElement> | string) => {
         const value = typeof e === 'string' ? e : e.target.value;
         updater(value);
@@ -231,7 +263,7 @@ export default function BarcodePage() {
                         <AccordionContent className="px-4 sm:px-6 space-y-4">
                             <div className="grid gap-2">
                                 <Label>Symbology</Label>
-                                <Select value={options.format} onValueChange={(v) => updateOption('format', v)}>
+                                <Select value={options.format} onValueChange={handleFormatChange}>
                                     <SelectTrigger><SelectValue/></SelectTrigger>
                                     <SelectContent>
                                         {SUPPORTED_FORMATS.map(format => (
