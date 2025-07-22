@@ -362,7 +362,7 @@ const defaultGradientState: GradientState = {
     rotation: 0,
 };
 
-const VisitingCardPreview: FC<{
+const QrCodePreview: FC<{
     qrWrapperRef: React.RefObject<HTMLDivElement>;
     canvasRef: React.RefObject<HTMLCanvasElement>;
     activeOverlay: TextOverlay | undefined;
@@ -370,9 +370,6 @@ const VisitingCardPreview: FC<{
     onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
     qrSize: number;
     scale: number;
-    activeContentType: string;
-    vCardData: typeof vCardInitialState;
-    meCardData: typeof meCardInitialState;
 }> = ({
     qrWrapperRef,
     canvasRef,
@@ -381,86 +378,35 @@ const VisitingCardPreview: FC<{
     onMouseDown,
     qrSize,
     scale,
-    activeContentType,
-    vCardData,
-    meCardData
 }) => {
-    const showVCard = activeContentType === 'vcard' && (vCardData.firstName || vCardData.lastName);
-    const showMeCard = activeContentType === 'mecard' && meCardData.name;
-
-    const InfoBlock = () => {
-        if (showVCard) {
-            return (
-                <div className="flex-grow flex flex-col justify-center text-right p-4 sm:p-6 text-foreground">
-                    <h3 className="font-headline text-2xl sm:text-3xl font-bold">{vCardData.firstName} {vCardData.lastName}</h3>
-                    {vCardData.jobTitle && <p className="text-sm sm:text-base text-muted-foreground">{vCardData.jobTitle}</p>}
-                    {vCardData.company && <p className="text-sm sm:text-base text-muted-foreground flex items-center justify-end gap-2 mt-1"><Building className="h-4 w-4" /> {vCardData.company}</p>}
-                    <Separator className="my-3 sm:my-4"/>
-                    <div className="flex flex-col items-end gap-2 text-xs sm:text-sm">
-                        {vCardData.phone && <div className="flex items-center gap-2"><p>{vCardData.phone}</p><Phone className="h-4 w-4"/></div>}
-                        {vCardData.email && <div className="flex items-center gap-2"><p>{vCardData.email}</p><Mail className="h-4 w-4"/></div>}
-                        {vCardData.website && <div className="flex items-center gap-2"><p>{vCardData.website}</p><LinkIcon className="h-4 w-4"/></div>}
-                    </div>
-                </div>
-            )
-        }
-        if (showMeCard) {
-             return (
-                <div className="flex-grow flex flex-col justify-center text-right p-4 sm:p-6 text-foreground">
-                    <h3 className="font-headline text-2xl sm:text-3xl font-bold">{meCardData.name}</h3>
-                    <Separator className="my-3 sm:my-4"/>
-                    <div className="flex flex-col items-end gap-2 text-xs sm:text-sm">
-                        {meCardData.phone && <div className="flex items-center gap-2"><p>{meCardData.phone}</p><Phone className="h-4 w-4"/></div>}
-                        {meCardData.email && <div className="flex items-center gap-2"><p>{meCardData.email}</p><Mail className="h-4 w-4"/></div>}
-                        {meCardData.website && <div className="flex items-center gap-2"><p>{meCardData.website}</p><LinkIcon className="h-4 w-4"/></div>}
-                    </div>
-                </div>
-            )
-        }
-        return null;
-    }
-
-    const hasInfo = showVCard || showMeCard;
-
     return (
-        <Card className="flex-grow flex flex-col shadow-lg w-full max-w-4xl mx-auto aspect-[16/9]">
-            <CardContent className="p-4 sm:p-6 flex-grow flex items-center justify-center">
-                <div className={cn("w-full h-full rounded-lg border bg-card shadow-inner overflow-hidden flex", hasInfo ? "flex-row" : "items-center justify-center")}>
-                   {hasInfo && <InfoBlock />}
-                    <div
-                        className={cn(
-                          "relative flex items-center justify-center",
-                          hasInfo ? "w-1/3 p-4" : "w-full h-full"
-                        )}
-                        style={{
-                            backgroundSize: '20px 20px',
-                            backgroundColor: 'white',
-                            backgroundImage:
-                                'linear-gradient(to right, #f0f0f0 1px, transparent 1px),' +
-                                'linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)',
-                        }}
-                    >
-                        <div
-                            className="relative aspect-square rounded-lg overflow-hidden"
-                            style={{
-                                width: hasInfo ? '100%' : qrSize,
-                                height: hasInfo ? 'auto' : qrSize,
-                                maxHeight: '100%',
-                            }}
-                        >
-                            <div ref={qrWrapperRef} className="absolute inset-0" />
-                            <canvas
-                                ref={canvasRef}
-                                width={qrSize * scale}
-                                height={qrSize * scale}
-                                className={cn(
-                                    "absolute top-0 left-0 w-full h-full",
-                                    activeOverlay ? "cursor-grab" : "",
-                                    isDragging ? "cursor-grabbing" : ""
-                                )}
-                                onMouseDown={onMouseDown}
-                            />
-                        </div>
+        <Card className="flex-grow flex flex-col shadow-lg w-full max-w-lg aspect-square">
+            <CardContent className="p-6 flex-grow flex items-center justify-center">
+                <div
+                    className="relative w-full h-full rounded-lg border bg-card shadow-inner overflow-hidden"
+                    style={{
+                        backgroundSize: '20px 20px',
+                        backgroundColor: 'white',
+                        backgroundImage:
+                            'linear-gradient(to right, #f0f0f0 1px, transparent 1px),' +
+                            'linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)',
+                    }}
+                >
+                    <div className="absolute inset-0 flex items-center justify-center p-4">
+                      <div className="relative aspect-square" style={{width: qrSize}}>
+                        <div ref={qrWrapperRef} className="absolute inset-0" />
+                        <canvas
+                            ref={canvasRef}
+                            width={qrSize * scale}
+                            height={qrSize * scale}
+                            className={cn(
+                                "absolute top-0 left-0 w-full h-full",
+                                activeOverlay ? "cursor-grab" : "",
+                                isDragging ? "cursor-grabbing" : ""
+                            )}
+                            onMouseDown={onMouseDown}
+                        />
+                      </div>
                     </div>
                 </div>
             </CardContent>
@@ -1031,7 +977,7 @@ export default function Home() {
       </header>
       <main className="flex-1 grid md:grid-cols-12 gap-px bg-border md:h-[calc(100vh-65px)]">
         <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 items-center justify-center">
-            <VisitingCardPreview
+            <QrCodePreview
                 qrWrapperRef={qrWrapperRef}
                 canvasRef={canvasRef}
                 activeOverlay={activeOverlay}
@@ -1039,9 +985,6 @@ export default function Home() {
                 onMouseDown={handleMouseDown}
                 qrSize={qrSize}
                 scale={scale}
-                activeContentType={activeContentType}
-                vCardData={vCardData}
-                meCardData={meCardData}
               />
         </div>
         <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col md:h-[calc(100vh-65px)]">
