@@ -210,7 +210,7 @@ export default function BarcodePage() {
                      </div>
                      <div className="w-full p-4 rounded-md flex items-center justify-center bg-white border shadow-inner min-h-[150px]">
                         {barcodeData ? (
-                            <canvas ref={canvasRef} />
+                            <canvas ref={canvasRef} className="max-w-full h-auto" />
                         ) : (
                             <p className="text-muted-foreground">Enter data to generate barcode</p>
                         )}
