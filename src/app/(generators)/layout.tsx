@@ -16,9 +16,11 @@ export default function GeneratorsLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [year, setYear] = useState<number | string>('');
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setYear(new Date().getFullYear());
+    setIsClient(true);
   }, []);
 
   const activeTab = pathname.includes('/barcode') ? 'barcode' : 'qrcode';
@@ -36,12 +38,14 @@ export default function GeneratorsLayout({
                  <h1 className="font-headline text-xl text-primary">
                    CodeMint
                  </h1>
+                {isClient && (
                  <Tabs value={activeTab} onValueChange={handleTabChange} className="ml-4">
                     <TabsList>
                         <TabsTrigger value="qrcode">QR Code</TabsTrigger>
                         <TabsTrigger value="barcode">Barcode</TabsTrigger>
                     </TabsList>
                 </Tabs>
+                )}
               </div>
            </div>
       </header>
