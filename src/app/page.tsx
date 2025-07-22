@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw, Wand2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -301,6 +301,8 @@ const QrCodePreview: FC<{
     handleMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
     handleMouseUp: () => void;
     handleMouseLeave: () => void;
+    overlays: TextOverlay[];
+    updateOverlay: (id: number, updates: Partial<TextOverlay>) => void;
 }> = ({
     qrSize,
     qrWrapperRef,
@@ -312,56 +314,65 @@ const QrCodePreview: FC<{
     handleMouseMove,
     handleMouseUp,
     handleMouseLeave,
+    overlays,
+    updateOverlay
 }) => (
-    <div className="flex flex-col items-center justify-start gap-4">
-        <div
-            className="relative w-full max-w-[500px] aspect-square rounded-lg border bg-card shadow-sm overflow-hidden"
-            style={{ 
-                backgroundSize: '20px 20px',
-                backgroundColor: 'white',
-                backgroundImage:
-                  'linear-gradient(to right, #f0f0f0 1px, transparent 1px),' +
-                  'linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)',
-            }}
-        >
-             <div ref={qrWrapperRef} className="absolute inset-0" />
-             <canvas
-                ref={canvasRef}
-                width={qrSize}
-                height={qrSize}
-                className={cn(
-                    "absolute top-0 left-0 w-full h-full",
-                    activeOverlay ? "cursor-grab" : "",
-                    isDragging ? "cursor-grabbing" : ""
-                )}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseLeave}
-             />
-             <canvas ref={finalCanvasRef} width={qrSize} height={qrSize} className="hidden" />
-        </div>
-    </div>
+    <Card className="flex-grow flex flex-col shadow-lg">
+        <CardContent className="p-4 sm:p-6 flex-grow flex items-center justify-center">
+            <div
+                className="relative w-full max-w-[500px] aspect-square rounded-lg border bg-card shadow-inner overflow-hidden"
+                style={{ 
+                    backgroundSize: '20px 20px',
+                    backgroundColor: 'white',
+                    backgroundImage:
+                      'linear-gradient(to right, #f0f0f0 1px, transparent 1px),' +
+                      'linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)',
+                }}
+            >
+                 <div ref={qrWrapperRef} className="absolute inset-0" />
+                 <canvas
+                    ref={canvasRef}
+                    width={qrSize}
+                    height={qrSize}
+                    className={cn(
+                        "absolute top-0 left-0 w-full h-full",
+                        activeOverlay ? "cursor-grab" : "",
+                        isDragging ? "cursor-grabbing" : ""
+                    )}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                 />
+                 <canvas ref={finalCanvasRef} width={qrSize} height={qrSize} className="hidden" />
+            </div>
+        </CardContent>
+         {activeOverlay && (
+             <CardFooter className="p-4 bg-muted/50 border-t flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground sm:gap-4">
+                <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {position:{x:qrSize/2, y:qrSize/2}})}>
+                    <Move className="mr-2 h-4 w-4" /> Reset Position
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {rotation: 0})}>
+                    <RotateCcw className="mr-2 h-4 w-4" /> Reset Rotation
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => {
+                    let newRotation = activeOverlay.rotation + 90;
+                    if (newRotation > 180) newRotation -= 360;
+                    updateOverlay(activeOverlay.id, {rotation: newRotation});
+                }}>
+                    <RotateCw className="mr-2 h-4 w-4" /> Rotate 90°
+                </Button>
+             </CardFooter>
+          )}
+    </Card>
 );
-
-
-const QrCustomizationPanel: FC<{
-    children: React.ReactNode;
-}> = ({ children }) => (
-    <div className="h-full">
-        <ScrollArea className="h-full w-full pr-3">
-             {children}
-        </ScrollArea>
-    </div>
-)
-
 
 export default function Home() {
   const [qrSize, setQrSize] = useState(400);
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
   
-  const [activeTab, setActiveTab] = useState('text');
+  const [activeContentType, setActiveContentType] = useState('text');
   
   // States for different QR types
   const [textData, setTextData] = useState("https://firebase.google.com/");
@@ -503,7 +514,7 @@ export default function Home() {
 
   useEffect(() => {
     let newContent = "";
-    switch(activeTab) {
+    switch(activeContentType) {
       case 'text':
         newContent = textData;
         break;
@@ -561,7 +572,7 @@ export default function Home() {
     }
     setQrContent(newContent);
   }, [
-    activeTab, textData, vCardData, meCardData, wifiData, phoneData, smsData, 
+    activeContentType, textData, vCardData, meCardData, wifiData, phoneData, smsData, 
     emailData, geoData, eventData, whatsappData, skypeData, zoomData, 
     paypalData, bitcoinData, twitterData, facebookData, instagramData, plainTextData
   ]);
@@ -757,714 +768,701 @@ export default function Home() {
 
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center bg-background p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-7xl">
-          <header className="mb-6">
-              <h1 className="font-headline text-3xl font-bold tracking-tight text-primary md:text-4xl">
+    <div className="flex h-screen w-full flex-col bg-muted/40">
+       <header className="flex h-16 items-center border-b bg-background px-4 sm:px-6 shrink-0">
+           <div className="flex items-center gap-2">
+              <Wand2 className="h-6 w-6 text-primary" />
+              <h1 className="font-headline text-xl font-bold tracking-tight text-primary">
                 QRCodeMint
               </h1>
-              <p className="text-muted-foreground mt-1">
-                Create, customize, and download your QR codes with ease.
-              </p>
-          </header>
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] lg:gap-8">
-            <Card className="w-full shadow-none border-0 lg:border lg:shadow-sm">
-              <CardContent className="p-0 lg:p-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <ScrollArea className="w-full whitespace-nowrap rounded-md border-b">
-                      <TabsList className="w-max bg-transparent p-0 rounded-none">
-                          <TabsTrigger value="text" className="rounded-none"><LinkIcon className="mr-2 h-4 w-4"/>URL</TabsTrigger>
-                          <TabsTrigger value="plaintext" className="rounded-none"><FileText className="mr-2 h-4 w-4"/>Text</TabsTrigger>
-                          <TabsTrigger value="vcard" className="rounded-none"><Contact className="mr-2 h-4 w-4"/>vCard</TabsTrigger>
-                          <TabsTrigger value="mecard" className="rounded-none"><User className="mr-2 h-4 w-4"/>MeCard</TabsTrigger>
-                          <TabsTrigger value="wifi" className="rounded-none"><Wifi className="mr-2 h-4 w-4"/>WiFi</TabsTrigger>
-                          <TabsTrigger value="phone" className="rounded-none"><Phone className="mr-2 h-4 w-4"/>Phone</TabsTrigger>
-                          <TabsTrigger value="sms" className="rounded-none"><MessageSquare className="mr-2 h-4 w-4"/>SMS</TabsTrigger>
-                          <TabsTrigger value="email" className="rounded-none"><Mail className="mr-2 h-4 w-4"/>Email</TabsTrigger>
-                          <TabsTrigger value="geo" className="rounded-none"><MapPin className="mr-2 h-4 w-4"/>Location</TabsTrigger>
-                          <TabsTrigger value="event" className="rounded-none"><CalendarIcon className="mr-2 h-4 w-4"/>Event</TabsTrigger>
-                          <TabsTrigger value="whatsapp" className="rounded-none"><MessageCircle className="mr-2 h-4 w-4"/>WhatsApp</TabsTrigger>
-                          <TabsTrigger value="skype" className="rounded-none"><svg className="mr-2 h-4 w-4" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Skype</title><path d="M22.02 14.65c-.59-2.03-1.63-3.9-3.08-5.46-1.52-1.63-3.43-2.78-5.6-3.35-1.9-.49-3.92-.49-5.82 0-2.17.57-4.08 1.72-5.6 3.35C.47 10.75-.43 12.62.16 14.65c1.24 4.28 5.23 7.35 9.84 7.35 4.61 0 8.6-3.07 9.84-7.35.13-.43.2-.87.18-1.31ZM12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12zM18.81 16.3c.6-1.12.92-2.38.92-3.68 0-4.07-3.3-7.37-7.37-7.37S4.99 8.55 4.99 12.62c0 1.3.32 2.56.92 3.68-.3.12-.59.27-.86.44-1.22.77-1.4 2.16-.39 2.92.51.39 1.16.51 1.76.32 2.18-.7 4.78-1.02 7.42-.02 2.64 1 5.23.68 7.41-.02.6-.2 1.25-.1 1.76-.32 1.01-.76.83-2.15-.39-2.92-.27-.17-.56-.32-.86-.44Z"/></svg>Skype</TabsTrigger>
-                          <TabsTrigger value="zoom" className="rounded-none"><Video className="mr-2 h-4 w-4"/>Zoom</TabsTrigger>
-                          <TabsTrigger value="paypal" className="rounded-none"><DollarSign className="mr-2 h-4 w-4"/>PayPal</TabsTrigger>
-                          <TabsTrigger value="bitcoin" className="rounded-none"><Bitcoin className="mr-2 h-4 w-4"/>Bitcoin</TabsTrigger>
-                          <TabsTrigger value="twitter" className="rounded-none"><Twitter className="mr-2 h-4 w-4"/>Twitter</TabsTrigger>
-                          <TabsTrigger value="facebook" className="rounded-none"><Facebook className="mr-2 h-4 w-4"/>Facebook</TabsTrigger>
-                          <TabsTrigger value="instagram" className="rounded-none"><Instagram className="mr-2 h-4 w-4"/>Instagram</TabsTrigger>
-                      </TabsList>
-                      <ScrollBar orientation="horizontal" />
-                  </ScrollArea>
-                  <div className="mt-6 max-h-[calc(100vh-22rem)] overflow-y-auto pr-2">
-                  <TabsContent value="text">
-                      <div className="grid gap-2">
-                        <Label htmlFor="text-input" className="font-medium">
-                          URL to Encode
-                        </Label>
-                        <Input
-                          id="text-input"
-                          value={textData}
-                          onChange={(e) => setTextData(e.target.value)}
-                          placeholder="e.g., https://example.com"
-                        />
-                      </div>
-                  </TabsContent>
-                  <TabsContent value="plaintext">
-                    <div className="grid gap-2">
-                      <Label htmlFor="plaintext-input">Plain Text</Label>
-                      <Textarea id="plaintext-input" value={plainTextData.text} onChange={handlePlainTextChange} placeholder="Enter any text here..."/>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="vcard">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="vcard-firstName">First Name</Label>
-                        <Input id="vcard-firstName" name="firstName" value={vCardData.firstName} onChange={handleVCardChange} />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="vcard-lastName">Last Name</Label>
-                        <Input id="vcard-lastName" name="lastName" value={vCardData.lastName} onChange={handleVCardChange} />
-                      </div>
-                       <div className="grid gap-2">
-                        <Label htmlFor="vcard-phone">Phone</Label>
-                        <Input id="vcard-phone" name="phone" type="tel" value={vCardData.phone} onChange={handleVCardChange} />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="vcard-email">Email</Label>
-                        <Input id="vcard-email" name="email" type="email" value={vCardData.email} onChange={handleVCardChange} />
-                      </div>
-                       <div className="grid gap-2">
-                        <Label htmlFor="vcard-company">Company</Label>
-                        <Input id="vcard-company" name="company" value={vCardData.company} onChange={handleVCardChange} />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="vcard-jobTitle">Job Title</Label>
-                        <Input id="vcard-jobTitle" name="jobTitle" value={vCardData.jobTitle} onChange={handleVCardChange} />
-                      </div>
-                      <div className="sm:col-span-2 grid gap-2">
-                        <Label htmlFor="vcard-website">Website</Label>
-                        <Input id="vcard-website" name="website" type="url" value={vCardData.website} onChange={handleVCardChange} />
-                      </div>
-                      <div className="sm:col-span-2 grid gap-2">
-                        <Label htmlFor="vcard-address">Address</Label>
-                        <Textarea id="vcard-address" name="address" value={vCardData.address} onChange={handleVCardChange} />
-                      </div>
-                    </div>
-                  </TabsContent>
-                   <TabsContent value="mecard">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="mecard-name">Name</Label>
-                        <Input id="mecard-name" name="name" value={meCardData.name} onChange={handleMeCardChange} />
-                      </div>
-                       <div className="grid gap-2">
-                        <Label htmlFor="mecard-phone">Phone</Label>
-                        <Input id="mecard-phone" name="phone" type="tel" value={meCardData.phone} onChange={handleMeCardChange} />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="mecard-email">Email</Label>
-                        <Input id="mecard-email" name="email" type="email" value={meCardData.email} onChange={handleMeCardChange} />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="mecard-website">Website</Label>
-                        <Input id="mecard-website" name="website" type="url" value={meCardData.website} onChange={handleMeCardChange} />
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="wifi">
-                      <div className="grid gap-4">
-                          <div className="grid gap-2">
-                              <Label htmlFor="wifi-ssid">Network Name (SSID)</Label>
-                              <Input id="wifi-ssid" name="ssid" value={wifiData.ssid} onChange={handleWifiChange}/>
-                          </div>
-                          <div className="grid gap-2">
-                              <Label htmlFor="wifi-password">Password</Label>
-                              <Input id="wifi-password" name="password" type="password" value={wifiData.password} onChange={handleWifiChange}/>
-                          </div>
-                          <div className="grid gap-2">
-                             <Label htmlFor="wifi-encryption">Encryption</Label>
-                              <Select name="encryption" value={wifiData.encryption} onValueChange={(v) => setWifiData(p => ({...p, encryption: v}))}>
-                                  <SelectTrigger><SelectValue/></SelectTrigger>
-                                  <SelectContent>
-                                      <SelectItem value="WPA">WPA/WPA2</SelectItem>
-                                      <SelectItem value="WEP">WEP</SelectItem>
-                                      <SelectItem value="nopass">None</SelectItem>
-                                  </SelectContent>
-                              </Select>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                              <Checkbox id="wifi-hidden" checked={wifiData.hidden} onCheckedChange={(c) => setWifiData(p => ({...p, hidden: !!c}))}/>
-                              <Label htmlFor="wifi-hidden">Hidden Network</Label>
-                          </div>
-                      </div>
-                  </TabsContent>
-                   <TabsContent value="phone">
-                      <div className="grid gap-2">
-                          <Label htmlFor="phone-number">Phone Number</Label>
-                          <Input id="phone-number" name="phone" type="tel" value={phoneData.phone} onChange={handlePhoneChange} placeholder="+15551234567"/>
-                      </div>
-                  </TabsContent>
-                   <TabsContent value="sms">
-                       <div className="grid gap-4">
-                          <div className="grid gap-2">
-                              <Label htmlFor="sms-phone">Recipient Phone Number</Label>
-                              <Input id="sms-phone" name="phone" type="tel" value={smsData.phone} onChange={handleSmsChange} placeholder="+15551234567"/>
-                          </div>
-                           <div className="grid gap-2">
-                              <Label htmlFor="sms-message">Message</Label>
-                              <Textarea id="sms-message" name="message" value={smsData.message} onChange={handleSmsChange}/>
-                          </div>
-                      </div>
-                  </TabsContent>
-                   <TabsContent value="email">
-                       <div className="grid gap-4">
-                          <div className="grid gap-2">
-                              <Label htmlFor="email-address">Recipient Email</Label>
-                              <Input id="email-address" name="email" type="email" value={emailData.email} onChange={handleEmailChange}/>
-                          </div>
-                          <div className="grid gap-2">
-                              <Label htmlFor="email-subject">Subject</Label>
-                              <Input id="email-subject" name="subject" value={emailData.subject} onChange={handleEmailChange}/>
-                          </div>
-                           <div className="grid gap-2">
-                              <Label htmlFor="email-body">Body</Label>
-                              <Textarea id="email-body" name="body" value={emailData.body} onChange={handleEmailChange}/>
-                          </div>
-                      </div>
-                  </TabsContent>
-                  <TabsContent value="geo">
-                      <div className="grid grid-cols-2 gap-4">
-                          <div className="grid gap-2">
-                              <Label htmlFor="geo-latitude">Latitude</Label>
-                              <Input id="geo-latitude" name="latitude" value={geoData.latitude} onChange={handleGeoChange}/>
-                          </div>
-                          <div className="grid gap-2">
-                              <Label htmlFor="geo-longitude">Longitude</Label>
-                              <Input id="geo-longitude" name="longitude" value={geoData.longitude} onChange={handleGeoChange}/>
-                          </div>
-                      </div>
-                  </TabsContent>
-                  <TabsContent value="event">
-                      <div className="grid gap-4">
-                          <div className="grid gap-2">
-                              <Label htmlFor="event-summary">Event Title</Label>
-                              <Input id="event-summary" name="summary" value={eventData.summary} onChange={handleEventChange}/>
-                          </div>
-                          <div className="grid gap-2">
-                              <Label htmlFor="event-location">Location</Label>
-                              <Input id="event-location" name="location" value={eventData.location} onChange={handleEventChange}/>
-                          </div>
-                          <div className="grid gap-2">
-                              <Label htmlFor="event-description">Description</Label>
-                              <Textarea id="event-description" name="description" value={eventData.description} onChange={handleEventChange}/>
-                          </div>
-                          <div className="grid sm:grid-cols-2 gap-4">
-                              <div className="grid gap-2">
-                                  <Label>Start Date</Label>
-                                  <Popover>
-                                      <PopoverTrigger asChild>
-                                          <Button variant="outline">{format(eventData.startDate, 'PPP')}</Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={eventData.startDate} onSelect={(d) => d && setEventData(p => ({...p, startDate: d}))} initialFocus/></PopoverContent>
-                                  </Popover>
-                              </div>
-                              <div className="grid gap-2">
-                                  <Label>End Date</Label>
-                                   <Popover>
-                                      <PopoverTrigger asChild>
-                                          <Button variant="outline">{format(eventData.endDate, 'PPP')}</Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={eventData.endDate} onSelect={(d) => d && setEventData(p => ({...p, endDate: d}))} initialFocus/></PopoverContent>
-                                  </Popover>
-                              </div>
-                          </div>
-                      </div>
-                  </TabsContent>
-                  <TabsContent value="whatsapp">
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="whatsapp-phone">Phone Number</Label>
-                        <Input id="whatsapp-phone" name="phone" type="tel" value={whatsappData.phone} onChange={handleWhatsappChange} placeholder="15551234567 (no +)"/>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="whatsapp-message">Message (optional)</Label>
-                        <Textarea id="whatsapp-message" name="message" value={whatsappData.message} onChange={handleWhatsappChange}/>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="skype">
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="skype-username">Skype Username</Label>
-                        <Input id="skype-username" name="username" value={skypeData.username} onChange={handleSkypeChange}/>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Action</Label>
-                        <Select value={skypeData.action} onValueChange={(v) => setSkypeData(p => ({...p, action: v}))}>
-                          <SelectTrigger><SelectValue/></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="chat">Chat</SelectItem>
-                            <SelectItem value="call">Call</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="zoom">
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="zoom-id">Meeting ID</Label>
-                        <Input id="zoom-id" name="meetingId" value={zoomData.meetingId} onChange={handleZoomChange}/>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="zoom-password">Password (optional)</Label>
-                        <Input id="zoom-password" name="password" value={zoomData.password} onChange={handleZoomChange}/>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="paypal">
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="paypal-email">PayPal Email</Label>
-                        <Input id="paypal-email" name="email" type="email" value={paypalData.email} onChange={handlePaypalChange}/>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="paypal-item">Item Name</Label>
-                        <Input id="paypal-item" name="itemName" value={paypalData.itemName} onChange={handlePaypalChange}/>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="paypal-amount">Amount</Label>
-                          <Input id="paypal-amount" name="amount" type="number" value={paypalData.amount} onChange={handlePaypalChange}/>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label>Currency</Label>
-                          <Select value={paypalData.currency} onValueChange={(v) => setPaypalData(p => ({...p, currency: v}))}>
-                            <SelectTrigger><SelectValue/></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="USD">USD</SelectItem>
-                              <SelectItem value="EUR">EUR</SelectItem>
-                              <SelectItem value="GBP">GBP</SelectItem>
-                              <SelectItem value="JPY">JPY</SelectItem>
-                              <SelectItem value="CAD">CAD</SelectItem>
-                              <SelectItem value="AUD">AUD</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="bitcoin">
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="bitcoin-address">Bitcoin Address</Label>
-                        <Input id="bitcoin-address" name="address" value={bitcoinData.address} onChange={handleBitcoinChange}/>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="bitcoin-amount">Amount (optional)</Label>
-                        <Input id="bitcoin-amount" name="amount" type="number" value={bitcoinData.amount} onChange={handleBitcoinChange}/>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="twitter">
-                    <div className="grid gap-2">
-                        <Label htmlFor="twitter-username">Twitter Username</Label>
-                        <Input id="twitter-username" value={twitterData.username} onChange={handleSocialChange(setTwitterData)} placeholder="firebase"/>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="facebook">
-                    <div className="grid gap-2">
-                        <Label htmlFor="facebook-username">Facebook Username/ID</Label>
-                        <Input id="facebook-username" value={facebookData.username} onChange={handleSocialChange(setFacebookData)} placeholder="firebase"/>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="instagram">
-                    <div className="grid gap-2">
-                        <Label htmlFor="instagram-username">Instagram Username</Label>
-                        <Input id="instagram-username" value={instagramData.username} onChange={handleSocialChange(setInstagramData)} placeholder="firebase"/>
-                    </div>
-                  </TabsContent>
-                  </div>
-                </Tabs>
-              </CardContent>
-            </Card>
-
-            <div className="row-start-1 lg:col-start-2">
-              <Card className="sticky top-8 shadow-none border-0 lg:border lg:shadow-sm">
-                <CardContent className="p-0 lg:p-6">
-                  <QrCodePreview
-                    qrSize={qrSize}
-                    qrWrapperRef={qrWrapperRef}
-                    canvasRef={canvasRef}
-                    finalCanvasRef={finalCanvasRef}
-                    activeOverlay={activeOverlay}
-                    isDragging={isDragging}
-                    handleMouseDown={handleMouseDown}
-                    handleMouseMove={handleMouseMove}
-                    handleMouseUp={handleMouseUp}
-                    handleMouseLeave={handleMouseUp}
-                  />
-
-                  {activeOverlay && (
-                     <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground sm:gap-4 mt-4">
-                        <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {position:{x:qrSize/2, y:qrSize/2}})}>
-                            <Move className="mr-2 h-4 w-4" /> Reset Position
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {rotation: 0})}>
-                            <RotateCcw className="mr-2 h-4 w-4" /> Reset Rotation
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => {
-                            let newRotation = activeOverlay.rotation + 90;
-                            if (newRotation > 180) newRotation -= 360;
-                            updateOverlay(activeOverlay.id, {rotation: newRotation});
-                        }}>
-                            <RotateCw className="mr-2 h-4 w-4" /> Rotate 90°
-                        </Button>
-                     </div>
-                  )}
-
-                  <QrCustomizationPanel>
-                    <Accordion type="multiple" defaultValue={['colors']} className="w-full mt-6">
-                      <AccordionItem value="colors">
-                        <AccordionTrigger className="text-lg font-semibold">
-                          <div className="flex items-center">
-                            <Palette className="mr-2 h-5 w-5 text-accent" />
-                            Customize Colors
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-4 space-y-6">
-                          <div>
-                              <Label className="font-medium text-base">Dots</Label>
-                              <div className="flex items-center space-x-2 mt-2">
-                                 <Switch id="dots-gradient-switch" checked={dotsGradient.enabled} onCheckedChange={(c) => setDotsGradient(p => ({...p, enabled: c}))} />
-                                 <Label htmlFor="dots-gradient-switch">Use Gradient</Label>
-                              </div>
-                              {dotsGradient.enabled ? (
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border p-4 rounded-md">
-                                      <ColorInput label="Color 1" value={dotsGradient.color1} onChange={(e) => setDotsGradient(p => ({ ...p, color1: e.target.value }))} />
-                                      <ColorInput label="Color 2" value={dotsGradient.color2} onChange={(e) => setDotsGradient(p => ({ ...p, color2: e.target.value }))} />
-                                      <div className="grid gap-2">
-                                          <Label>Type</Label>
-                                          <Select value={dotsGradient.type} onValueChange={(v: 'linear' | 'radial') => setDotsGradient(p => ({ ...p, type: v }))}>
-                                              <SelectTrigger><SelectValue /></SelectTrigger>
-                                              <SelectContent>
-                                                  <SelectItem value="linear">Linear</SelectItem>
-                                                  <SelectItem value="radial">Radial</SelectItem>
-                                              </SelectContent>
-                                          </Select>
-                                      </div>
-                                      <div className="grid gap-2">
-                                          <Label>Rotation: {dotsGradient.rotation}°</Label>
-                                          <Slider value={[dotsGradient.rotation]} onValueChange={(v) => setDotsGradient(p => ({ ...p, rotation: v[0] }))} min={0} max={360} step={1} />
-                                      </div>
-                                  </div>
-                              ) : (
-                                  <ColorInput label="Dots Color" value={qrOptions.dotsOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('dotsOptions', { color: e.target.value })} className="mt-4" />
-                              )}
-                          </div>
-                          <Separator/>
-                           <div>
-                              <Label className="font-medium text-base">Corners</Label>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                  <ColorInput label="Corner Squares" value={qrOptions.cornersSquareOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('cornersSquareOptions', { color: e.target.value })} />
-                                  <ColorInput label="Corner Dots" value={qrOptions.cornersDotOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('cornersDotOptions', { color: e.target.value })} />
-                              </div>
-                          </div>
-                          <Separator/>
-                           <div>
-                              <Label className="font-medium text-base">Background</Label>
-                              <div className="flex items-center space-x-2 mt-2">
-                                 <Switch id="bg-gradient-switch" checked={backgroundGradient.enabled} onCheckedChange={(c) => setBackgroundGradient(p => ({...p, enabled: c}))} />
-                                 <Label htmlFor="bg-gradient-switch">Use Gradient</Label>
-                              </div>
-                              {backgroundGradient.enabled ? (
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border p-4 rounded-md">
-                                      <ColorInput label="Color 1" value={backgroundGradient.color1} onChange={(e) => setBackgroundGradient(p => ({ ...p, color1: e.target.value }))} />
-                                      <ColorInput label="Color 2" value={backgroundGradient.color2} onChange={(e) => setBackgroundGradient(p => ({ ...p, color2: e.target.value }))} />
-                                      <div className="grid gap-2">
-                                          <Label>Type</Label>
-                                          <Select value={backgroundGradient.type} onValueChange={(v: 'linear' | 'radial') => setBackgroundGradient(p => ({ ...p, type: v }))}>
-                                              <SelectTrigger><SelectValue /></SelectTrigger>
-                                              <SelectContent>
-                                                  <SelectItem value="linear">Linear</SelectItem>
-                                                  <SelectItem value="radial">Radial</SelectItem>
-                                              </SelectContent>
-                                          </Select>
-                                      </div>
-                                      <div className="grid gap-2">
-                                          <Label>Rotation: {backgroundGradient.rotation}°</Label>
-                                          <Slider value={[backgroundGradient.rotation]} onValueChange={(v) => setBackgroundGradient(p => ({ ...p, rotation: v[0] }))} min={0} max={360} step={1} />
-                                      </div>
-                                  </div>
-                              ) : (
-                                 <ColorInput label="Background Color" value={qrOptions.backgroundOptions?.color ?? '#ffffff'} onChange={(e) => updateNestedQrOptions('backgroundOptions', { color: e.target.value })} className="mt-4"/>
-                              )}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                       <AccordionItem value="qr-style">
-                          <AccordionTrigger className="text-lg font-semibold">
-                              <div className="flex items-center"><ImageIcon className="mr-2 h-5 w-5 text-accent"/>QR Code Style</div>
-                          </AccordionTrigger>
-                          <AccordionContent className="pt-4 space-y-4">
-                              <div className="grid gap-2">
-                                  <Label>Dot Style</Label>
-                                  <Select value={qrOptions.dotsOptions?.type} onValueChange={(v) => updateNestedQrOptions('dotsOptions', {type: v})}>
-                                      <SelectTrigger><SelectValue/></SelectTrigger>
-                                      <SelectContent>
-                                          <SelectItem value="square">Square</SelectItem>
-                                          <SelectItem value="dots">Dots</SelectItem>
-                                          <SelectItem value="rounded">Rounded</SelectItem>
-                                          <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
-                                          <SelectItem value="classy">Classy</SelectItem>
-                                          <SelectItem value="classy-rounded">Classy Rounded</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                   <div className="grid gap-2">
-                                      <Label>Corner Square Style</Label>
-                                      <Select value={qrOptions.cornersSquareOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersSquareOptions', {type: v})}>
-                                          <SelectTrigger><SelectValue/></SelectTrigger>
-                                          <SelectContent>
-                                              <SelectItem value="square">Square</SelectItem>
-                                              <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
-                                              <SelectItem value="dot">Dot</SelectItem>
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
-                                  <div className="grid gap-2">
-                                      <Label>Corner Dot Style</Label>
-                                      <Select value={qrOptions.cornersDotOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersDotOptions', {type: v})}>
-                                          <SelectTrigger><SelectValue/></SelectTrigger>
-                                          <SelectContent>
-                                              <SelectItem value="square">Square</SelectItem>
-                                              <SelectItem value="dot">Dot</SelectItem>
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
-                              </div>
-                          </AccordionContent>
-                       </AccordionItem>
-
-                       <AccordionItem value="logo">
-                           <AccordionTrigger className="text-lg font-semibold">
-                               <div className="flex items-center"><Upload className="mr-2 h-5 w-5 text-accent" /> Logo</div>
-                           </AccordionTrigger>
-                           <AccordionContent className="pt-4 space-y-4">
-                               <div className="grid gap-2">
-                                  <Label htmlFor="logo-upload">Upload Logo</Label>
-                                  <div className="flex items-center gap-2">
-                                      <Input id="logo-upload" type="file" accept="image/*" onChange={handleLogoUpload} className="flex-grow"/>
-                                      <Button variant="ghost" size="icon" onClick={() => setLogo(null)} disabled={!logo}>
-                                          <Trash2 className="h-4 w-4"/>
-                                      </Button>
-                                  </div>
-                               </div>
-                               {logo && (
-                                   <div className="space-y-4 border-t pt-4">
-                                      <div className="flex items-center space-x-2">
-                                          <Switch id="hide-dots-switch" checked={qrOptions.imageOptions?.hideBackgroundDots} onCheckedChange={(c) => updateNestedQrOptions('imageOptions', { hideBackgroundDots: c })} />
-                                          <Label htmlFor="hide-dots-switch">Hide dots behind logo</Label>
-                                      </div>
-                                       <div className="grid gap-2">
-                                          <Label>Logo Size: {Math.round((qrOptions.imageOptions?.imageSize ?? 0.4) * 100)}%</Label>
-                                          <Slider value={[(qrOptions.imageOptions?.imageSize ?? 0.4)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { imageSize: v[0] })} min={0.1} max={0.9} step={0.05} />
-                                       </div>
-                                       <div className="grid gap-2">
-                                          <Label>Logo Margin: {qrOptions.imageOptions?.margin ?? 0}px</Label>
-                                          <Slider value={[(qrOptions.imageOptions?.margin ?? 0)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { margin: v[0] })} min={0} max={20} step={1} />
-                                       </div>
-                                   </div>
-                               )}
-                           </AccordionContent>
-                       </AccordionItem>
-                      
-                      <AccordionItem value="text-overlay">
-                         <AccordionTrigger className="text-lg font-semibold">
-                           <div className="flex items-center">
-                             <Type className="mr-2 h-5 w-5 text-accent" />
-                             Text Overlays
-                           </div>
-                         </AccordionTrigger>
-                         <AccordionContent className="pt-4">
-                           <div className="flex items-center justify-between mb-4">
-                              <div className="grid gap-2">
-                                  <Label>Overlays</Label>
-                                   <Select value={activeOverlayId?.toString() ?? ""} onValueChange={(id) => setActiveOverlayId(Number(id))}>
-                                     <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select an overlay..."/></SelectTrigger>
-                                     <SelectContent>
-                                      {overlays.map(o => <SelectItem key={o.id} value={o.id.toString()}>{o.text.substring(0, 20)}</SelectItem>)}
-                                     </SelectContent>
-                                   </Select>
-                              </div>
-                             <Button onClick={addOverlay} size="sm"><PlusCircle className="mr-2 h-4 w-4"/>Add Text</Button>
-                           </div>
-
-                           {activeOverlay ? (
-                             <div className="grid gap-4 border-t pt-4">
-                                 <div className="flex items-end gap-2">
-                                   <div className="grid gap-2 flex-grow">
-                                      <Label htmlFor={`text-overlay-input-${activeOverlay.id}`}>Text</Label>
-                                      <Input
-                                          id={`text-overlay-input-${activeOverlay.id}`}
-                                          placeholder="Your text here..."
-                                          value={activeOverlay.text}
-                                          onChange={(e) => updateOverlay(activeOverlay.id, {text: e.target.value})}
-                                      />
-                                   </div>
-                                   <Button variant="destructive" size="icon" onClick={() => deleteOverlay(activeOverlay.id)}>
-                                       <Trash2 className="h-4 w-4"/>
-                                       <span className="sr-only">Delete overlay</span>
-                                   </Button>
-                                 </div>
-                                 
-                                 <Accordion type="multiple" defaultValue={['font-style']} className="w-full">
-                                      <AccordionItem value="font-style">
-                                          <AccordionTrigger className="text-base">Font & Style</AccordionTrigger>
-                                          <AccordionContent className="pt-4 space-y-4">
-                                              <div className="grid grid-cols-2 gap-4">
-                                               <div className="grid gap-2">
-                                                 <Label>Font</Label>
-                                                 <Select value={activeOverlay.fontFamily} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontFamily: v})}>
-                                                   <SelectTrigger><SelectValue /></SelectTrigger>
-                                                   <SelectContent>
-                                                     <SelectItem value="Inter">Inter</SelectItem>
-                                                     <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
-                                                     <SelectItem value="Arial">Arial</SelectItem>
-                                                     <SelectItem value="Courier New">Courier New</SelectItem>
-                                                     <SelectItem value="Verdana">Verdana</SelectItem>
-                                                   </SelectContent>
-                                                 </Select>
-                                               </div>
-                                                <ColorInput
-                                                 label="Color"
-                                                 value={activeOverlay.color}
-                                                 onChange={(e) => updateOverlay(activeOverlay.id, {color: e.target.value})}
-                                               />
-                                             </div>
-                                              <div className="grid gap-2">
-                                                <Label>Font Size: {activeOverlay.fontSize}px</Label>
-                                                <Slider value={[activeOverlay.fontSize]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0]})} min={10} max={80} step={1} />
-                                             </div>
-                                              <div className="grid gap-2">
-                                               <Label>Style</Label>
-                                               <ToggleGroup type="multiple" value={[activeOverlay.fontWeight, activeOverlay.fontStyle].filter(s => s !== 'normal')} onValueChange={(value) => {
-                                                 updateOverlay(activeOverlay.id, {
-                                                   fontWeight: value.includes('bold') ? 'bold' : 'normal',
-                                                   fontStyle: value.includes('italic') ? 'italic' : 'normal'
-                                                 });
-                                               }}>
-                                                 <ToggleGroupItem value="bold" aria-label="Toggle bold"><Bold className="h-4 w-4" /></ToggleGroupItem>
-                                                 <ToggleGroupItem value="italic" aria-label="Toggle italic"><Italic className="h-4 w-4" /></ToggleGroupItem>
-                                               </ToggleGroup>
-                                             </div>
-                                          </AccordionContent>
-                                      </AccordionItem>
-                                      <AccordionItem value="layout">
-                                          <AccordionTrigger className="text-base">Layout</AccordionTrigger>
-                                          <AccordionContent className="pt-4 space-y-4">
-                                             <div className="grid gap-2">
-                                               <Label>Alignment</Label>
-                                               <ToggleGroup type="single" value={activeOverlay.textAlign} onValueChange={(value: TextOverlay['textAlign']) => value && updateOverlay(activeOverlay.id, {textAlign: value})}>
-                                                 <ToggleGroupItem value="left" aria-label="Align left"><AlignLeft className="h-4 w-4" /></ToggleGroupItem>
-                                                 <ToggleGroupItem value="center" aria-label="Align center"><AlignCenter className="h-4 w-4" /></ToggleGroupItem>
-                                                 <ToggleGroupItem value="right" aria-label="Align right"><AlignRight className="h-4 w-4" /></ToggleGroupItem>
-                                               </ToggleGroup>
-                                             </div>
-                                             <div className="grid gap-2">
-                                                <Label>Rotation: {activeOverlay.rotation}°</Label>
-                                                <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
-                                             </div>
-                                          </AccordionContent>
-                                      </AccordionItem>
-                                  </Accordion>
-                             </div>
-                           ) : (
-                              <div className="text-center text-muted-foreground p-4 border-t">
-                                  <p>No text overlay selected.</p>
-                                  <p>Add a new one to get started.</p>
-                              </div>
-                           )}
-                         </AccordionContent>
-                       </AccordionItem>
-
-                      <AccordionItem value="advanced">
-                        <AccordionTrigger className="text-lg font-semibold">
-                          <div className="flex items-center">
-                            <Settings2 className="mr-2 h-5 w-5 text-accent" />
-                            Advanced Settings
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-4 space-y-4">
-                          <div className="grid gap-2">
-                            <Label htmlFor="error-correction" className="font-medium">
-                              Error Correction Level
-                            </Label>
-                            <Select
-                              value={qrOptions.qrOptions?.errorCorrectionLevel}
-                              onValueChange={(v) =>
-                                updateNestedQrOptions('qrOptions', { errorCorrectionLevel: v })
-                              }
-                            >
-                              <SelectTrigger id="error-correction" className="w-full">
-                                <SelectValue placeholder="Select level" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="L">Low (Recovers ~7% of data)</SelectItem>
-                                <SelectItem value="M">Medium (Recovers ~15% of data)</SelectItem>
-                                <SelectItem value="Q">Quartile (Recovers ~25% of data)</SelectItem>
-                                <SelectItem value="H">High (Recovers ~30% of data)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground">Higher levels can recover more data but increase QR code density.</p>
-                          </div>
-                          <Separator/>
-                          <div className="grid gap-2">
-                              <Label>Size: {qrSize}px</Label>
-                              <Slider value={[qrSize]} onValueChange={(v) => setQrSize(v[0])} min={200} max={1000} step={10} />
-                          </div>
-                          <div className="grid gap-2">
-                              <Label>Margin: {qrOptions.margin}px</Label>
-                              <Slider value={[qrOptions.margin ?? 0]} onValueChange={(v) => updateQrOptions({ margin: v[0] })} min={0} max={50} step={1} />
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </QrCustomizationPanel>
-                </CardContent>
-                <CardFooter className="flex flex-col items-stretch gap-4 border-t bg-card/50 p-4 sm:flex-row sm:justify-end md:p-6">
-                    <div className="flex items-center gap-2 sm:gap-4">
-                      <Label htmlFor="format-select" className="flex-shrink-0">
-                        Format:
-                      </Label>
-                      <Select
-                        value={downloadFormat}
-                        onValueChange={(v) => setDownloadFormat(v as FileExtension)}
-                      >
-                        <SelectTrigger id="format-select" className="flex-grow sm:w-[120px]">
-                          <SelectValue placeholder="Format" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="png">PNG</SelectItem>
-                          <SelectItem value="jpeg">JPG</SelectItem>
-                          <SelectItem value="svg">SVG</SelectItem>
-                          <SelectItem value="webp">WEBP</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button
-                      onClick={handleDownload}
-                      size="lg"
-                      className="w-full sm:w-auto"
-                    >
-                      <Download className="mr-2 h-5 w-5" />
-                      Download QR Code
-                    </Button>
-                  </CardFooter>
-              </Card>
+           </div>
+            <div className="ml-auto flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <Label htmlFor="format-select" className="flex-shrink-0 text-sm font-medium">
+                  Format:
+                </Label>
+                <Select
+                  value={downloadFormat}
+                  onValueChange={(v) => setDownloadFormat(v as FileExtension)}
+                >
+                  <SelectTrigger id="format-select" className="w-[100px]">
+                    <SelectValue placeholder="Format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="png">PNG</SelectItem>
+                    <SelectItem value="jpeg">JPG</SelectItem>
+                    <SelectItem value="svg">SVG</SelectItem>
+                    <SelectItem value="webp">WEBP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={handleDownload}
+                className="w-full sm:w-auto"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </Button>
             </div>
-          </div>
-      </div>
-    </main>
+      </header>
+      <main className="flex-1 flex flex-col md:grid md:grid-cols-12 gap-px bg-border overflow-hidden">
+        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6">
+            <QrCodePreview
+                qrSize={qrSize}
+                qrWrapperRef={qrWrapperRef}
+                canvasRef={canvasRef}
+                finalCanvasRef={finalCanvasRef}
+                activeOverlay={activeOverlay}
+                isDragging={isDragging}
+                handleMouseDown={handleMouseDown}
+                handleMouseMove={handleMouseMove}
+                handleMouseUp={handleMouseUp}
+                handleMouseLeave={handleMouseUp}
+                overlays={overlays}
+                updateOverlay={updateOverlay}
+              />
+        </div>
+        <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col">
+            <Tabs defaultValue="content" className="flex-grow flex flex-col">
+                <TabsList className="w-full grid grid-cols-2 rounded-none h-auto">
+                    <TabsTrigger value="content" className="py-3 rounded-none">Content</TabsTrigger>
+                    <TabsTrigger value="design" className="py-3 rounded-none">Design</TabsTrigger>
+                </TabsList>
+                <TabsContent value="content" className="flex-grow overflow-hidden">
+                   <ScrollArea className="h-full">
+                       <div className="p-4 sm:p-6">
+                            <Select value={activeContentType} onValueChange={setActiveContentType}>
+                                <SelectTrigger className="w-full h-12 text-base">
+                                    <SelectValue placeholder="Select content type..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="text"><div className="flex items-center"><LinkIcon className="mr-2 h-4 w-4"/>URL</div></SelectItem>
+                                    <SelectItem value="plaintext"><div className="flex items-center"><FileText className="mr-2 h-4 w-4"/>Text</div></SelectItem>
+                                    <SelectItem value="vcard"><div className="flex items-center"><Contact className="mr-2 h-4 w-4"/>vCard Contact</div></SelectItem>
+                                    <SelectItem value="mecard"><div className="flex items-center"><User className="mr-2 h-4 w-4"/>MeCard</div></SelectItem>
+                                    <SelectItem value="wifi"><div className="flex items-center"><Wifi className="mr-2 h-4 w-4"/>WiFi Network</div></SelectItem>
+                                    <SelectItem value="phone"><div className="flex items-center"><Phone className="mr-2 h-4 w-4"/>Phone Number</div></SelectItem>
+                                    <SelectItem value="sms"><div className="flex items-center"><MessageSquare className="mr-2 h-4 w-4"/>SMS</div></SelectItem>
+                                    <SelectItem value="email"><div className="flex items-center"><Mail className="mr-2 h-4 w-4"/>Email</div></SelectItem>
+                                    <SelectItem value="geo"><div className="flex items-center"><MapPin className="mr-2 h-4 w-4"/>Location</div></SelectItem>
+                                    <SelectItem value="event"><div className="flex items-center"><CalendarIcon className="mr-2 h-4 w-4"/>Calendar Event</div></SelectItem>
+                                    <SelectItem value="whatsapp"><div className="flex items-center"><MessageCircle className="mr-2 h-4 w-4"/>WhatsApp</div></SelectItem>
+                                    <SelectItem value="skype"><div className="flex items-center"><svg className="mr-2 h-4 w-4" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Skype</title><path d="M22.02 14.65c-.59-2.03-1.63-3.9-3.08-5.46-1.52-1.63-3.43-2.78-5.6-3.35-1.9-.49-3.92-.49-5.82 0-2.17.57-4.08 1.72-5.6 3.35C.47 10.75-.43 12.62.16 14.65c1.24 4.28 5.23 7.35 9.84 7.35 4.61 0 8.6-3.07 9.84-7.35.13-.43.2-.87.18-1.31ZM12 24c6.627 0 12-5.373 12-12S18.627 0 12 0 0 5.373 0 12s5.373 12 12 12zM18.81 16.3c.6-1.12.92-2.38.92-3.68 0-4.07-3.3-7.37-7.37-7.37S4.99 8.55 4.99 12.62c0 1.3.32 2.56.92 3.68-.3.12-.59.27-.86.44-1.22.77-1.4 2.16-.39 2.92.51.39 1.16.51 1.76.32 2.18-.7 4.78-1.02 7.42-.02 2.64 1 5.23.68 7.41-.02.6-.2 1.25-.1 1.76-.32 1.01-.76.83-2.15-.39-2.92-.27-.17-.56-.32-.86-.44Z"/></svg>Skype</div></SelectItem>
+                                    <SelectItem value="zoom"><div className="flex items-center"><Video className="mr-2 h-4 w-4"/>Zoom Meeting</div></SelectItem>
+                                    <SelectItem value="paypal"><div className="flex items-center"><DollarSign className="mr-2 h-4 w-4"/>PayPal Payment</div></SelectItem>
+                                    <SelectItem value="bitcoin"><div className="flex items-center"><Bitcoin className="mr-2 h-4 w-4"/>Bitcoin Transaction</div></SelectItem>
+                                    <SelectItem value="twitter"><div className="flex items-center"><Twitter className="mr-2 h-4 w-4"/>Twitter Profile</div></SelectItem>
+                                    <SelectItem value="facebook"><div className="flex items-center"><Facebook className="mr-2 h-4 w-4"/>Facebook Profile</div></SelectItem>
+                                    <SelectItem value="instagram"><div className="flex items-center"><Instagram className="mr-2 h-4 w-4"/>Instagram Profile</div></SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <div className="mt-6">
+                                {activeContentType === 'text' && (
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="text-input" className="font-medium">
+                                      URL to Encode
+                                    </Label>
+                                    <Input
+                                      id="text-input"
+                                      value={textData}
+                                      onChange={(e) => setTextData(e.target.value)}
+                                      placeholder="e.g., https://example.com"
+                                    />
+                                  </div>
+                                )}
+                                {activeContentType === 'plaintext' && (
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="plaintext-input">Plain Text</Label>
+                                    <Textarea id="plaintext-input" value={plainTextData.text} onChange={handlePlainTextChange} placeholder="Enter any text here..."/>
+                                  </div>
+                                )}
+                                {activeContentType === 'vcard' && (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="vcard-firstName">First Name</Label>
+                                      <Input id="vcard-firstName" name="firstName" value={vCardData.firstName} onChange={handleVCardChange} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="vcard-lastName">Last Name</Label>
+                                      <Input id="vcard-lastName" name="lastName" value={vCardData.lastName} onChange={handleVCardChange} />
+                                    </div>
+                                     <div className="grid gap-2">
+                                      <Label htmlFor="vcard-phone">Phone</Label>
+                                      <Input id="vcard-phone" name="phone" type="tel" value={vCardData.phone} onChange={handleVCardChange} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="vcard-email">Email</Label>
+                                      <Input id="vcard-email" name="email" type="email" value={vCardData.email} onChange={handleVCardChange} />
+                                    </div>
+                                     <div className="grid gap-2">
+                                      <Label htmlFor="vcard-company">Company</Label>
+                                      <Input id="vcard-company" name="company" value={vCardData.company} onChange={handleVCardChange} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="vcard-jobTitle">Job Title</Label>
+                                      <Input id="vcard-jobTitle" name="jobTitle" value={vCardData.jobTitle} onChange={handleVCardChange} />
+                                    </div>
+                                    <div className="sm:col-span-2 grid gap-2">
+                                      <Label htmlFor="vcard-website">Website</Label>
+                                      <Input id="vcard-website" name="website" type="url" value={vCardData.website} onChange={handleVCardChange} />
+                                    </div>
+                                    <div className="sm:col-span-2 grid gap-2">
+                                      <Label htmlFor="vcard-address">Address</Label>
+                                      <Textarea id="vcard-address" name="address" value={vCardData.address} onChange={handleVCardChange} />
+                                    </div>
+                                  </div>
+                                )}
+                                 {activeContentType === 'mecard' && (
+                                  <div className="grid grid-cols-1 gap-4">
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="mecard-name">Name</Label>
+                                      <Input id="mecard-name" name="name" value={meCardData.name} onChange={handleMeCardChange} />
+                                    </div>
+                                     <div className="grid gap-2">
+                                      <Label htmlFor="mecard-phone">Phone</Label>
+                                      <Input id="mecard-phone" name="phone" type="tel" value={meCardData.phone} onChange={handleMeCardChange} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="mecard-email">Email</Label>
+                                      <Input id="mecard-email" name="email" type="email" value={meCardData.email} onChange={handleMeCardChange} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="mecard-website">Website</Label>
+                                      <Input id="mecard-website" name="website" type="url" value={meCardData.website} onChange={handleMeCardChange} />
+                                    </div>
+                                  </div>
+                                )}
+                                {activeContentType === 'wifi' && (
+                                    <div className="grid gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="wifi-ssid">Network Name (SSID)</Label>
+                                            <Input id="wifi-ssid" name="ssid" value={wifiData.ssid} onChange={handleWifiChange}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="wifi-password">Password</Label>
+                                            <Input id="wifi-password" name="password" type="password" value={wifiData.password} onChange={handleWifiChange}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                           <Label htmlFor="wifi-encryption">Encryption</Label>
+                                            <Select name="encryption" value={wifiData.encryption} onValueChange={(v) => setWifiData(p => ({...p, encryption: v}))}>
+                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="WPA">WPA/WPA2</SelectItem>
+                                                    <SelectItem value="WEP">WEP</SelectItem>
+                                                    <SelectItem value="nopass">None</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox id="wifi-hidden" checked={wifiData.hidden} onCheckedChange={(c) => setWifiData(p => ({...p, hidden: !!c}))}/>
+                                            <Label htmlFor="wifi-hidden">Hidden Network</Label>
+                                        </div>
+                                    </div>
+                                )}
+                                 {activeContentType === 'phone' && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="phone-number">Phone Number</Label>
+                                        <Input id="phone-number" name="phone" type="tel" value={phoneData.phone} onChange={handlePhoneChange} placeholder="+15551234567"/>
+                                    </div>
+                                )}
+                                 {activeContentType === 'sms' && (
+                                     <div className="grid gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="sms-phone">Recipient Phone Number</Label>
+                                            <Input id="sms-phone" name="phone" type="tel" value={smsData.phone} onChange={handleSmsChange} placeholder="+15551234567"/>
+                                        </div>
+                                         <div className="grid gap-2">
+                                            <Label htmlFor="sms-message">Message</Label>
+                                            <Textarea id="sms-message" name="message" value={smsData.message} onChange={handleSmsChange}/>
+                                        </div>
+                                    </div>
+                                )}
+                                 {activeContentType === 'email' && (
+                                     <div className="grid gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="email-address">Recipient Email</Label>
+                                            <Input id="email-address" name="email" type="email" value={emailData.email} onChange={handleEmailChange}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="email-subject">Subject</Label>
+                                            <Input id="email-subject" name="subject" value={emailData.subject} onChange={handleEmailChange}/>
+                                        </div>
+                                         <div className="grid gap-2">
+                                            <Label htmlFor="email-body">Body</Label>
+                                            <Textarea id="email-body" name="body" value={emailData.body} onChange={handleEmailChange}/>
+                                        </div>
+                                    </div>
+                                )}
+                                {activeContentType === 'geo' && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="geo-latitude">Latitude</Label>
+                                            <Input id="geo-latitude" name="latitude" value={geoData.latitude} onChange={handleGeoChange}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="geo-longitude">Longitude</Label>
+                                            <Input id="geo-longitude" name="longitude" value={geoData.longitude} onChange={handleGeoChange}/>
+                                        </div>
+                                    </div>
+                                )}
+                                {activeContentType === 'event' && (
+                                    <div className="grid gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="event-summary">Event Title</Label>
+                                            <Input id="event-summary" name="summary" value={eventData.summary} onChange={handleEventChange}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="event-location">Location</Label>
+                                            <Input id="event-location" name="location" value={eventData.location} onChange={handleEventChange}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="event-description">Description</Label>
+                                            <Textarea id="event-description" name="description" value={eventData.description} onChange={handleEventChange}/>
+                                        </div>
+                                        <div className="grid sm:grid-cols-2 gap-4">
+                                            <div className="grid gap-2">
+                                                <Label>Start Date</Label>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="outline">{format(eventData.startDate, 'PPP')}</Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={eventData.startDate} onSelect={(d) => d && setEventData(p => ({...p, startDate: d}))} initialFocus/></PopoverContent>
+                                                </Popover>
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label>End Date</Label>
+                                                 <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="outline">{format(eventData.endDate, 'PPP')}</Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={eventData.endDate} onSelect={(d) => d && setEventData(p => ({...p, endDate: d}))} initialFocus/></PopoverContent>
+                                                </Popover>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                {activeContentType === 'whatsapp' && (
+                                  <div className="grid gap-4">
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="whatsapp-phone">Phone Number</Label>
+                                      <Input id="whatsapp-phone" name="phone" type="tel" value={whatsappData.phone} onChange={handleWhatsappChange} placeholder="15551234567 (no +)"/>
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="whatsapp-message">Message (optional)</Label>
+                                      <Textarea id="whatsapp-message" name="message" value={whatsappData.message} onChange={handleWhatsappChange}/>
+                                    </div>
+                                  </div>
+                                )}
+                                {activeContentType === 'skype' && (
+                                  <div className="grid gap-4">
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="skype-username">Skype Username</Label>
+                                      <Input id="skype-username" name="username" value={skypeData.username} onChange={handleSkypeChange}/>
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label>Action</Label>
+                                      <Select value={skypeData.action} onValueChange={(v) => setSkypeData(p => ({...p, action: v}))}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="chat">Chat</SelectItem>
+                                          <SelectItem value="call">Call</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                )}
+                                {activeContentType === 'zoom' && (
+                                  <div className="grid gap-4">
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="zoom-id">Meeting ID</Label>
+                                      <Input id="zoom-id" name="meetingId" value={zoomData.meetingId} onChange={handleZoomChange}/>
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="zoom-password">Password (optional)</Label>
+                                      <Input id="zoom-password" name="password" value={zoomData.password} onChange={handleZoomChange}/>
+                                    </div>
+                                  </div>
+                                )}
+                                {activeContentType === 'paypal' && (
+                                  <div className="grid gap-4">
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="paypal-email">PayPal Email</Label>
+                                      <Input id="paypal-email" name="email" type="email" value={paypalData.email} onChange={handlePaypalChange}/>
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="paypal-item">Item Name</Label>
+                                      <Input id="paypal-item" name="itemName" value={paypalData.itemName} onChange={handlePaypalChange}/>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="grid gap-2">
+                                        <Label htmlFor="paypal-amount">Amount</Label>
+                                        <Input id="paypal-amount" name="amount" type="number" value={paypalData.amount} onChange={handlePaypalChange}/>
+                                      </div>
+                                      <div className="grid gap-2">
+                                        <Label>Currency</Label>
+                                        <Select value={paypalData.currency} onValueChange={(v) => setPaypalData(p => ({...p, currency: v}))}>
+                                          <SelectTrigger><SelectValue/></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="USD">USD</SelectItem>
+                                            <SelectItem value="EUR">EUR</SelectItem>
+                                            <SelectItem value="GBP">GBP</SelectItem>
+                                            <SelectItem value="JPY">JPY</SelectItem>
+                                            <SelectItem value="CAD">CAD</SelectItem>
+                                            <SelectItem value="AUD">AUD</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                                {activeContentType === 'bitcoin' && (
+                                  <div className="grid gap-4">
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="bitcoin-address">Bitcoin Address</Label>
+                                      <Input id="bitcoin-address" name="address" value={bitcoinData.address} onChange={handleBitcoinChange}/>
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="bitcoin-amount">Amount (optional)</Label>
+                                      <Input id="bitcoin-amount" name="amount" type="number" value={bitcoinData.amount} onChange={handleBitcoinChange}/>
+                                    </div>
+                                  </div>
+                                )}
+                                {activeContentType === 'twitter' && (
+                                  <div className="grid gap-2">
+                                      <Label htmlFor="twitter-username">Twitter Username</Label>
+                                      <Input id="twitter-username" value={twitterData.username} onChange={handleSocialChange(setTwitterData)} placeholder="firebase"/>
+                                  </div>
+                                )}
+                                {activeContentType === 'facebook' && (
+                                  <div className="grid gap-2">
+                                      <Label htmlFor="facebook-username">Facebook Username/ID</Label>
+                                      <Input id="facebook-username" value={facebookData.username} onChange={handleSocialChange(setFacebookData)} placeholder="firebase"/>
+                                  </div>
+                                )}
+                                {activeContentType === 'instagram' && (
+                                  <div className="grid gap-2">
+                                      <Label htmlFor="instagram-username">Instagram Username</Label>
+                                      <Input id="instagram-username" value={instagramData.username} onChange={handleSocialChange(setInstagramData)} placeholder="firebase"/>
+                                  </div>
+                                )}
+                            </div>
+                       </div>
+                   </ScrollArea>
+                </TabsContent>
+                <TabsContent value="design" className="flex-grow overflow-hidden">
+                   <ScrollArea className="h-full">
+                       <Accordion type="multiple" defaultValue={['colors']} className="w-full">
+                          <AccordionItem value="colors" className="border-b-0">
+                            <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
+                              <div className="flex items-center">
+                                <Palette className="mr-2 h-5 w-5 text-accent" />
+                                Colors
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-4 sm:px-6 space-y-6">
+                              <div>
+                                  <Label className="font-medium text-base">Dots</Label>
+                                  <div className="flex items-center space-x-2 mt-2">
+                                     <Switch id="dots-gradient-switch" checked={dotsGradient.enabled} onCheckedChange={(c) => setDotsGradient(p => ({...p, enabled: c}))} />
+                                     <Label htmlFor="dots-gradient-switch">Use Gradient</Label>
+                                  </div>
+                                  {dotsGradient.enabled ? (
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border p-4 rounded-md">
+                                          <ColorInput label="Color 1" value={dotsGradient.color1} onChange={(e) => setDotsGradient(p => ({ ...p, color1: e.target.value }))} />
+                                          <ColorInput label="Color 2" value={dotsGradient.color2} onChange={(e) => setDotsGradient(p => ({ ...p, color2: e.target.value }))} />
+                                          <div className="grid gap-2">
+                                              <Label>Type</Label>
+                                              <Select value={dotsGradient.type} onValueChange={(v: 'linear' | 'radial') => setDotsGradient(p => ({ ...p, type: v }))}>
+                                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                                  <SelectContent>
+                                                      <SelectItem value="linear">Linear</SelectItem>
+                                                      <SelectItem value="radial">Radial</SelectItem>
+                                                  </SelectContent>
+                                              </Select>
+                                          </div>
+                                          <div className="grid gap-2">
+                                              <Label>Rotation: {dotsGradient.rotation}°</Label>
+                                              <Slider value={[dotsGradient.rotation]} onValueChange={(v) => setDotsGradient(p => ({ ...p, rotation: v[0] }))} min={0} max={360} step={1} />
+                                          </div>
+                                      </div>
+                                  ) : (
+                                      <ColorInput label="Dots Color" value={qrOptions.dotsOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('dotsOptions', { color: e.target.value })} className="mt-4" />
+                                  )}
+                              </div>
+                              <Separator/>
+                               <div>
+                                  <Label className="font-medium text-base">Corners</Label>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                      <ColorInput label="Corner Squares" value={qrOptions.cornersSquareOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('cornersSquareOptions', { color: e.target.value })} />
+                                      <ColorInput label="Corner Dots" value={qrOptions.cornersDotOptions?.color ?? '#000000'} onChange={(e) => updateNestedQrOptions('cornersDotOptions', { color: e.target.value })} />
+                                  </div>
+                              </div>
+                              <Separator/>
+                               <div>
+                                  <Label className="font-medium text-base">Background</Label>
+                                  <div className="flex items-center space-x-2 mt-2">
+                                     <Switch id="bg-gradient-switch" checked={backgroundGradient.enabled} onCheckedChange={(c) => setBackgroundGradient(p => ({...p, enabled: c}))} />
+                                     <Label htmlFor="bg-gradient-switch">Use Gradient</Label>
+                                  </div>
+                                  {backgroundGradient.enabled ? (
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border p-4 rounded-md">
+                                          <ColorInput label="Color 1" value={backgroundGradient.color1} onChange={(e) => setBackgroundGradient(p => ({ ...p, color1: e.target.value }))} />
+                                          <ColorInput label="Color 2" value={backgroundGradient.color2} onChange={(e) => setBackgroundGradient(p => ({ ...p, color2: e.target.value }))} />
+                                          <div className="grid gap-2">
+                                              <Label>Type</Label>
+                                              <Select value={backgroundGradient.type} onValueChange={(v: 'linear' | 'radial') => setBackgroundGradient(p => ({ ...p, type: v }))}>
+                                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                                  <SelectContent>
+                                                      <SelectItem value="linear">Linear</SelectItem>
+                                                      <SelectItem value="radial">Radial</SelectItem>
+                                                  </SelectContent>
+                                              </Select>
+                                          </div>
+                                          <div className="grid gap-2">
+                                              <Label>Rotation: {backgroundGradient.rotation}°</Label>
+                                              <Slider value={[backgroundGradient.rotation]} onValueChange={(v) => setBackgroundGradient(p => ({ ...p, rotation: v[0] }))} min={0} max={360} step={1} />
+                                          </div>
+                                      </div>
+                                  ) : (
+                                     <ColorInput label="Background Color" value={qrOptions.backgroundOptions?.color ?? '#ffffff'} onChange={(e) => updateNestedQrOptions('backgroundOptions', { color: e.target.value })} className="mt-4"/>
+                                  )}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                           <AccordionItem value="qr-style" className="border-b-0">
+                              <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
+                                  <div className="flex items-center"><ImageIcon className="mr-2 h-5 w-5 text-accent"/>Shapes</div>
+                              </AccordionTrigger>
+                              <AccordionContent className="px-4 sm:px-6 space-y-4">
+                                  <div className="grid gap-2">
+                                      <Label>Dot Style</Label>
+                                      <Select value={qrOptions.dotsOptions?.type} onValueChange={(v) => updateNestedQrOptions('dotsOptions', {type: v})}>
+                                          <SelectTrigger><SelectValue/></SelectTrigger>
+                                          <SelectContent>
+                                              <SelectItem value="square">Square</SelectItem>
+                                              <SelectItem value="dots">Dots</SelectItem>
+                                              <SelectItem value="rounded">Rounded</SelectItem>
+                                              <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
+                                              <SelectItem value="classy">Classy</SelectItem>
+                                              <SelectItem value="classy-rounded">Classy Rounded</SelectItem>
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                       <div className="grid gap-2">
+                                          <Label>Corner Square Style</Label>
+                                          <Select value={qrOptions.cornersSquareOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersSquareOptions', {type: v})}>
+                                              <SelectTrigger><SelectValue/></SelectTrigger>
+                                              <SelectContent>
+                                                  <SelectItem value="square">Square</SelectItem>
+                                                  <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
+                                                  <SelectItem value="dot">Dot</SelectItem>
+                                              </SelectContent>
+                                          </Select>
+                                      </div>
+                                      <div className="grid gap-2">
+                                          <Label>Corner Dot Style</Label>
+                                          <Select value={qrOptions.cornersDotOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersDotOptions', {type: v})}>
+                                              <SelectTrigger><SelectValue/></SelectTrigger>
+                                              <SelectContent>
+                                                  <SelectItem value="square">Square</SelectItem>
+                                                  <SelectItem value="dot">Dot</SelectItem>
+                                              </SelectContent>
+                                          </Select>
+                                      </div>
+                                  </div>
+                              </AccordionContent>
+                           </AccordionItem>
+
+                           <AccordionItem value="logo" className="border-b-0">
+                               <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
+                                   <div className="flex items-center"><Upload className="mr-2 h-5 w-5 text-accent" /> Logo</div>
+                               </AccordionTrigger>
+                               <AccordionContent className="px-4 sm:px-6 space-y-4">
+                                   <div className="grid gap-2">
+                                      <Label htmlFor="logo-upload">Upload Logo</Label>
+                                      <div className="flex items-center gap-2">
+                                          <Input id="logo-upload" type="file" accept="image/*" onChange={handleLogoUpload} className="flex-grow"/>
+                                          <Button variant="ghost" size="icon" onClick={() => setLogo(null)} disabled={!logo}>
+                                              <Trash2 className="h-4 w-4"/>
+                                          </Button>
+                                      </div>
+                                   </div>
+                                   {logo && (
+                                       <div className="space-y-4 border-t pt-4">
+                                          <div className="flex items-center space-x-2">
+                                              <Switch id="hide-dots-switch" checked={qrOptions.imageOptions?.hideBackgroundDots} onCheckedChange={(c) => updateNestedQrOptions('imageOptions', { hideBackgroundDots: c })} />
+                                              <Label htmlFor="hide-dots-switch">Hide dots behind logo</Label>
+                                          </div>
+                                           <div className="grid gap-2">
+                                              <Label>Logo Size: {Math.round((qrOptions.imageOptions?.imageSize ?? 0.4) * 100)}%</Label>
+                                              <Slider value={[(qrOptions.imageOptions?.imageSize ?? 0.4)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { imageSize: v[0] })} min={0.1} max={0.9} step={0.05} />
+                                           </div>
+                                           <div className="grid gap-2">
+                                              <Label>Logo Margin: {qrOptions.imageOptions?.margin ?? 0}px</Label>
+                                              <Slider value={[(qrOptions.imageOptions?.margin ?? 0)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { margin: v[0] })} min={0} max={20} step={1} />
+                                           </div>
+                                       </div>
+                                   )}
+                               </AccordionContent>
+                           </AccordionItem>
+                          
+                          <AccordionItem value="text-overlay" className="border-b-0">
+                             <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
+                               <div className="flex items-center">
+                                 <Type className="mr-2 h-5 w-5 text-accent" />
+                                 Text Overlays
+                               </div>
+                             </AccordionTrigger>
+                             <AccordionContent className="px-4 sm:px-6">
+                               <div className="flex items-center justify-between mb-4">
+                                  <div className="grid gap-2">
+                                      <Label>Overlays</Label>
+                                       <Select value={activeOverlayId?.toString() ?? ""} onValueChange={(id) => setActiveOverlayId(Number(id))}>
+                                         <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select an overlay..."/></SelectTrigger>
+                                         <SelectContent>
+                                          {overlays.map(o => <SelectItem key={o.id} value={o.id.toString()}>{o.text.substring(0, 20)}</SelectItem>)}
+                                         </SelectContent>
+                                       </Select>
+                                  </div>
+                                 <Button onClick={addOverlay} size="sm"><PlusCircle className="mr-2 h-4 w-4"/>Add Text</Button>
+                               </div>
+
+                               {activeOverlay ? (
+                                 <div className="grid gap-4 border-t pt-4">
+                                     <div className="flex items-end gap-2">
+                                       <div className="grid gap-2 flex-grow">
+                                          <Label htmlFor={`text-overlay-input-${activeOverlay.id}`}>Text</Label>
+                                          <Input
+                                              id={`text-overlay-input-${activeOverlay.id}`}
+                                              placeholder="Your text here..."
+                                              value={activeOverlay.text}
+                                              onChange={(e) => updateOverlay(activeOverlay.id, {text: e.target.value})}
+                                          />
+                                       </div>
+                                       <Button variant="destructive" size="icon" onClick={() => deleteOverlay(activeOverlay.id)}>
+                                           <Trash2 className="h-4 w-4"/>
+                                           <span className="sr-only">Delete overlay</span>
+                                       </Button>
+                                     </div>
+                                     
+                                     <Accordion type="multiple" defaultValue={['font-style']} className="w-full">
+                                          <AccordionItem value="font-style">
+                                              <AccordionTrigger className="text-base">Font & Style</AccordionTrigger>
+                                              <AccordionContent className="pt-4 space-y-4">
+                                                  <div className="grid grid-cols-2 gap-4">
+                                                   <div className="grid gap-2">
+                                                     <Label>Font</Label>
+                                                     <Select value={activeOverlay.fontFamily} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontFamily: v})}>
+                                                       <SelectTrigger><SelectValue /></SelectTrigger>
+                                                       <SelectContent>
+                                                         <SelectItem value="Inter">Inter</SelectItem>
+                                                         <SelectItem value="Space Grotesk">Space Grotesk</SelectItem>
+                                                         <SelectItem value="Arial">Arial</SelectItem>
+                                                         <SelectItem value="Courier New">Courier New</SelectItem>
+                                                         <SelectItem value="Verdana">Verdana</SelectItem>
+                                                       </SelectContent>
+                                                     </Select>
+                                                   </div>
+                                                    <ColorInput
+                                                     label="Color"
+                                                     value={activeOverlay.color}
+                                                     onChange={(e) => updateOverlay(activeOverlay.id, {color: e.target.value})}
+                                                   />
+                                                 </div>
+                                                  <div className="grid gap-2">
+                                                    <Label>Font Size: {activeOverlay.fontSize}px</Label>
+                                                    <Slider value={[activeOverlay.fontSize]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0]})} min={10} max={80} step={1} />
+                                                 </div>
+                                                  <div className="grid gap-2">
+                                                   <Label>Style</Label>
+                                                   <ToggleGroup type="multiple" value={[activeOverlay.fontWeight, activeOverlay.fontStyle].filter(s => s !== 'normal')} onValueChange={(value) => {
+                                                     updateOverlay(activeOverlay.id, {
+                                                       fontWeight: value.includes('bold') ? 'bold' : 'normal',
+                                                       fontStyle: value.includes('italic') ? 'italic' : 'normal'
+                                                     });
+                                                   }}>
+                                                     <ToggleGroupItem value="bold" aria-label="Toggle bold"><Bold className="h-4 w-4" /></ToggleGroupItem>
+                                                     <ToggleGroupItem value="italic" aria-label="Toggle italic"><Italic className="h-4 w-4" /></ToggleGroupItem>
+                                                   </ToggleGroup>
+                                                 </div>
+                                              </AccordionContent>
+                                          </AccordionItem>
+                                          <AccordionItem value="layout">
+                                              <AccordionTrigger className="text-base">Layout</AccordionTrigger>
+                                              <AccordionContent className="pt-4 space-y-4">
+                                                 <div className="grid gap-2">
+                                                   <Label>Alignment</Label>
+                                                   <ToggleGroup type="single" value={activeOverlay.textAlign} onValueChange={(value: TextOverlay['textAlign']) => value && updateOverlay(activeOverlay.id, {textAlign: value})}>
+                                                     <ToggleGroupItem value="left" aria-label="Align left"><AlignLeft className="h-4 w-4" /></ToggleGroupItem>
+                                                     <ToggleGroupItem value="center" aria-label="Align center"><AlignCenter className="h-4 w-4" /></ToggleGroupItem>
+                                                     <ToggleGroupItem value="right" aria-label="Align right"><AlignRight className="h-4 w-4" /></ToggleGroupItem>
+                                                   </ToggleGroup>
+                                                 </div>
+                                                 <div className="grid gap-2">
+                                                    <Label>Rotation: {activeOverlay.rotation}°</Label>
+                                                    <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
+                                                 </div>
+                                              </AccordionContent>
+                                          </AccordionItem>
+                                      </Accordion>
+                                 </div>
+                               ) : (
+                                  <div className="text-center text-muted-foreground p-4 border-t">
+                                      <p>No text overlay selected.</p>
+                                      <p>Add a new one to get started.</p>
+                                  </div>
+                               )}
+                             </AccordionContent>
+                           </AccordionItem>
+
+                          <AccordionItem value="advanced" className="border-b-0">
+                            <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
+                              <div className="flex items-center">
+                                <Settings2 className="mr-2 h-5 w-5 text-accent" />
+                                Advanced Settings
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-4 sm:px-6 space-y-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="error-correction" className="font-medium">
+                                  Error Correction Level
+                                </Label>
+                                <Select
+                                  value={qrOptions.qrOptions?.errorCorrectionLevel}
+                                  onValueChange={(v) =>
+                                    updateNestedQrOptions('qrOptions', { errorCorrectionLevel: v })
+                                  }
+                                >
+                                  <SelectTrigger id="error-correction" className="w-full">
+                                    <SelectValue placeholder="Select level" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="L">Low (Recovers ~7% of data)</SelectItem>
+                                    <SelectItem value="M">Medium (Recovers ~15% of data)</SelectItem>
+                                    <SelectItem value="Q">Quartile (Recovers ~25% of data)</SelectItem>
+                                    <SelectItem value="H">High (Recovers ~30% of data)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">Higher levels can recover more data but increase QR code density.</p>
+                              </div>
+                              <Separator/>
+                              <div className="grid gap-2">
+                                  <Label>Size: {qrSize}px</Label>
+                                  <Slider value={[qrSize]} onValueChange={(v) => setQrSize(v[0])} min={200} max={1000} step={10} />
+                              </div>
+                              <div className="grid gap-2">
+                                  <Label>Margin: {qrOptions.margin}px</Label>
+                                  <Slider value={[qrOptions.margin ?? 0]} onValueChange={(v) => updateQrOptions({ margin: v[0] })} min={0} max={50} step={1} />
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                   </ScrollArea>
+                </TabsContent>
+            </Tabs>
+        </div>
+      </main>
+    </div>
   );
 }
