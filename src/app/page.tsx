@@ -744,6 +744,13 @@ export default function Home() {
         drawAllLayers();
     }
   };
+
+  const handleMouseLeave = () => {
+    if (isDragging) {
+      setIsDragging(false);
+      drawAllLayers();
+    }
+  };
   
   const handleDownload = async () => {
     await drawAllLayers();
@@ -871,7 +878,7 @@ export default function Home() {
                 handleMouseDown={handleMouseDown}
                 handleMouseMove={handleMouseMove}
                 handleMouseUp={handleMouseUp}
-                handleMouseLeave={handleMouseUp}
+                handleMouseLeave={handleMouseLeave}
                 overlays={overlays}
                 updateOverlay={updateOverlay}
               />
