@@ -44,8 +44,6 @@ import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 
-const CANVAS_SIZE = 400;
-
 interface ColorInputProps {
   label: string;
   value: string;
@@ -248,9 +246,9 @@ const generateTwitterString = (data: typeof socialInitialState) => `https://twit
 const generateFacebookString = (data: typeof socialInitialState) => `https://facebook.com/${data.username}`;
 const generateInstagramString = (data: typeof socialInitialState) => `https://instagram.com/${data.username}`;
 
-const defaultQrOptions: QRCodeStylingOptions = {
-    width: CANVAS_SIZE,
-    height: CANVAS_SIZE,
+const defaultQrOptions: Omit<QRCodeStylingOptions, 'data'> = {
+    width: 400,
+    height: 400,
     margin: 20,
     qrOptions: {
         errorCorrectionLevel: "H",
@@ -294,6 +292,7 @@ const defaultGradientState: GradientState = {
 };
 
 export default function Home() {
+  const [qrSize, setQrSize] = useState(400);
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
   
@@ -319,7 +318,7 @@ export default function Home() {
   const [instagramData, setInstagramData] = useState(socialInitialState);
   const [plainTextData, setPlainTextData] = useState(plainTextInitialState);
 
-  const [qrOptions, setQrOptions] = useState<QRCodeStylingOptions>(defaultQrOptions);
+  const [qrOptions, setQrOptions] = useState<Omit<QRCodeStylingOptions, 'data'>>(defaultQrOptions);
   const [logo, setLogo] = useState<string | null>(null);
 
   const [dotsGradient, setDotsGradient] = useState<GradientState>(defaultGradientState);
@@ -338,11 +337,11 @@ export default function Home() {
 
   const activeOverlay = overlays.find(o => o.id === activeOverlayId);
   
-  const updateQrOptions = (newOptions: Partial<QRCodeStylingOptions>) => {
+  const updateQrOptions = (newOptions: Partial<Omit<QRCodeStylingOptions, 'data'>>) => {
     setQrOptions(prev => ({...prev, ...newOptions}));
   }
 
-  const updateNestedQrOptions = (category: keyof QRCodeStylingOptions, newOptions: any) => {
+  const updateNestedQrOptions = (category: keyof Omit<QRCodeStylingOptions, 'data'>, newOptions: any) => {
       setQrOptions(prev => ({
           ...prev,
           [category]: {
@@ -368,7 +367,7 @@ export default function Home() {
       fontStyle: 'normal',
       textAlign: 'center',
       rotation: 0,
-      position: { x: CANVAS_SIZE / 2, y: CANVAS_SIZE / 2 },
+      position: { x: qrSize / 2, y: qrSize / 2 },
     };
     setOverlays([...overlays, newOverlay]);
     setActiveOverlayId(newId);
@@ -400,8 +399,8 @@ export default function Home() {
     if (!finalCtx || !visibleCtx || !qrCodeRef.current) return;
     
     // Clear both canvases
-    finalCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-    visibleCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    finalCtx.clearRect(0, 0, qrSize, qrSize);
+    visibleCtx.clearRect(0, 0, qrSize, qrSize);
     
     // Get the QR code as a data URL from qr-code-styling
     const qrDataUrl = await qrCodeRef.current.getRawData('png');
@@ -415,8 +414,8 @@ export default function Home() {
     });
 
     // Draw QR code to both canvases
-    finalCtx.drawImage(qrImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
-    visibleCtx.drawImage(qrImage, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    finalCtx.drawImage(qrImage, 0, 0, qrSize, qrSize);
+    visibleCtx.drawImage(qrImage, 0, 0, qrSize, qrSize);
     
     // Draw overlays to both canvases
     overlays.forEach(o => {
@@ -504,6 +503,8 @@ export default function Home() {
   useEffect(() => {
       const finalQrOptions: QRCodeStylingOptions = {
           ...qrOptions,
+          width: qrSize,
+          height: qrSize,
           data: qrContent,
           image: logo ?? undefined,
           dotsOptions: {
@@ -546,11 +547,11 @@ export default function Home() {
       }
 
       return () => clearTimeout(timeoutId);
-  }, [qrContent, qrOptions, logo, overlays, dotsGradient, backgroundGradient]);
+  }, [qrContent, qrOptions, logo, overlays, dotsGradient, backgroundGradient, qrSize]);
   
   useEffect(() => {
     drawAllLayers();
-  }, [overlays]);
+  }, [overlays, qrSize]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -1293,7 +1294,7 @@ export default function Home() {
                       Advanced Settings
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pt-4">
+                  <AccordionContent className="pt-4 space-y-4">
                     <div className="grid gap-2">
                       <Label htmlFor="error-correction" className="font-medium">
                         Error Correction Level
@@ -1316,18 +1317,30 @@ export default function Home() {
                       </Select>
                       <p className="text-xs text-muted-foreground">Higher levels can recover more data but increase QR code density.</p>
                     </div>
+                    <Separator/>
+                    <div className="grid gap-2">
+                        <Label>Size: {qrSize}px</Label>
+                        <Slider value={[qrSize]} onValueChange={(v) => setQrSize(v[0])} min={200} max={1000} step={10} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label>Margin: {qrOptions.margin}px</Label>
+                        <Slider value={[qrOptions.margin ?? 0]} onValueChange={(v) => updateQrOptions({ margin: v[0] })} min={0} max={50} step={1} />
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
             </div>
 
             <div className="flex flex-col items-center justify-center gap-4 lg:col-span-3">
-              <div className="relative w-full max-w-[400px] aspect-square rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner">
+              <div
+                className="relative w-full aspect-square rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner"
+                style={{ maxWidth: qrSize }}
+              >
                  <div ref={qrWrapperRef} className="absolute inset-0" />
                  <canvas
                     ref={canvasRef}
-                    width={CANVAS_SIZE}
-                    height={CANVAS_SIZE}
+                    width={qrSize}
+                    height={qrSize}
                     className={cn(
                         "absolute top-0 left-0 w-full h-full",
                         activeOverlay ? "cursor-grab" : "",
@@ -1338,11 +1351,11 @@ export default function Home() {
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                  />
-                 <canvas ref={finalCanvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} className="hidden" />
+                 <canvas ref={finalCanvasRef} width={qrSize} height={qrSize} className="hidden" />
               </div>
               {activeOverlay && (
                  <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground sm:gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {position:{x:CANVAS_SIZE/2, y:CANVAS_SIZE/2}})}>
+                    <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {position:{x:qrSize/2, y:qrSize/2}})}>
                         <Move className="mr-2 h-4 w-4" /> Reset Position
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => updateOverlay(activeOverlay.id, {rotation: 0})}>
