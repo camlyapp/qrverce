@@ -4,7 +4,9 @@
 import { useState, useEffect, useRef, type FC } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw, Wand2 } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw, Wand2, Loader } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { generateDesign, type GenerateDesignOutput } from "@/ai/flows/generate-design-flow";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -365,6 +367,7 @@ const QrCodePreview: FC<{
 );
 
 export default function Home() {
+  const { toast } = useToast();
   const [scale, setScale] = useState(2);
   const [qrSize, setQrSize] = useState(300);
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
@@ -416,6 +419,9 @@ export default function Home() {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const activeOverlay = overlays.find(o => o.id === activeOverlayId);
+
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   
   useEffect(() => {
     setScale(window.devicePixelRatio || 2);
@@ -652,8 +658,6 @@ export default function Home() {
           if(qrWrapperRef.current.firstChild) {
             qrWrapperRef.current.removeChild(qrWrapperRef.current.firstChild);
           }
-          // We don't append the QR code to the DOM anymore, we draw it on canvas
-          // qrCodeRef.current.append(qrWrapperRef.current);
           drawAllLayers();
       }
   }, [qrContent, qrOptions, logo, dotsGradient, backgroundGradient, qrSize, scale]);
@@ -833,6 +837,48 @@ export default function Home() {
   const handleBitcoinChange = (e: React.ChangeEvent<HTMLInputElement>) => setBitcoinData(p => ({...p, [e.target.name]: e.target.value}));
   const handleSocialChange = (setter: React.Dispatch<React.SetStateAction<typeof socialInitialState>>) => (e: React.ChangeEvent<HTMLInputElement>) => setter({username: e.target.value});
   const handlePlainTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setPlainTextData({text: e.target.value});
+
+  const applyAiDesign = (design: GenerateDesignOutput) => {
+    if (design.colors.dots) {
+      updateNestedQrOptions('dotsOptions', { color: design.colors.dots });
+      setDotsGradient(p => ({ ...p, enabled: false }));
+    }
+    if (design.colors.corner) {
+       updateNestedQrOptions('cornersSquareOptions', { color: design.colors.corner });
+       updateNestedQrOptions('cornersDotOptions', { color: design.colors.corner });
+    }
+    if (design.colors.background) {
+      updateNestedQrOptions('backgroundOptions', { color: design.colors.background });
+      setBackgroundGradient(p => ({...p, enabled: false}));
+    }
+    if (design.shapes.dots) {
+      updateNestedQrOptions('dotsOptions', { type: design.shapes.dots });
+    }
+    if (design.shapes.corners) {
+       updateNestedQrOptions('cornersSquareOptions', { type: design.shapes.corners });
+    }
+    if (design.logoDataUri) {
+      setLogo(design.logoDataUri);
+    }
+  };
+
+  const handleGenerateDesign = async () => {
+    if (!aiPrompt) {
+      toast({ title: "Error", description: "Please enter a prompt.", variant: "destructive" });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const design = await generateDesign(aiPrompt);
+      applyAiDesign(design);
+      toast({ title: "Success", description: "AI design applied!" });
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Error", description: "Failed to generate AI design.", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
 
   return (
@@ -1215,6 +1261,34 @@ export default function Home() {
                 <TabsContent value="design" className="flex-grow md:overflow-y-auto">
                    <ScrollArea className="h-full">
                        <Accordion type="single" defaultValue="colors" collapsible className="w-full">
+                          <AccordionItem value="ai-magic" className="border-b-0">
+                            <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
+                              <div className="flex items-center">
+                                <Wand2 className="mr-2 h-5 w-5 text-accent" />
+                                Magic Design
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-4 sm:px-6 space-y-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="ai-prompt">Design Prompt</Label>
+                                <Textarea 
+                                  id="ai-prompt" 
+                                  placeholder="e.g., A business card for a futuristic tech company"
+                                  value={aiPrompt}
+                                  onChange={(e) => setAiPrompt(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">Describe the design you want. The AI will generate colors, shapes, and even a logo!</p>
+                              </div>
+                              <Button onClick={handleGenerateDesign} disabled={isGenerating}>
+                                {isGenerating ? (
+                                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Wand2 className="mr-2 h-4 w-4" />
+                                )}
+                                Generate
+                              </Button>
+                            </AccordionContent>
+                          </AccordionItem>
                           <AccordionItem value="colors" className="border-b-0">
                             <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
                               <div className="flex items-center">
@@ -1363,8 +1437,8 @@ export default function Home() {
                                               <Slider value={[(qrOptions.imageOptions?.imageSize ?? 0.4)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { imageSize: v[0] })} min={0.1} max={0.9} step={0.05} />
                                            </div>
                                            <div className="grid gap-2">
-                                              <Label>Logo Margin: {qrOptions.imageOptions?.margin ?? 0}px</Label>
-                                              <Slider value={[(qrOptions.imageOptions?.margin ?? 0)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { margin: v[0] })} min={0} max={20} step={1} />
+                                              <Label>Logo Margin: {Math.round((qrOptions.imageOptions?.margin ?? 0) / scale)}px</Label>
+                                              <Slider value={[Math.round((qrOptions.imageOptions?.margin ?? 0) / scale)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { margin: v[0] })} min={0} max={20} step={1} />
                                            </div>
                                        </div>
                                    )}
@@ -1531,5 +1605,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
