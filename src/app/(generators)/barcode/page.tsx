@@ -153,31 +153,8 @@ export default function BarcodePage() {
     const [scale, setScale] = useState(2);
 
     useEffect(() => {
-        setScale(window.devicePixelRatio || 2);
-        
-        // Load fonts when component mounts
-        const fontLink = document.createElement('link');
-        fontLink.href = "https://fonts.googleapis.com/css2?family=Roboto&family=Open+Sans&family=Lato&family=Montserrat&family=Oswald&family=Raleway&family=Playfair+Display&family=Dancing+Script&family=Pacifico&family=Lobster&display=swap";
-        fontLink.rel = 'stylesheet';
-        
-        const preconnect1 = document.createElement('link');
-        preconnect1.href = "https://fonts.googleapis.com";
-        preconnect1.rel = 'preconnect';
-
-        const preconnect2 = document.createElement('link');
-        preconnect2.href = "https://fonts.gstatic.com";
-        preconnect2.rel = 'preconnect';
-        preconnect2.crossOrigin = "anonymous";
-        
-        document.head.appendChild(preconnect1);
-        document.head.appendChild(preconnect2);
-        document.head.appendChild(fontLink);
-
-        return () => {
-            document.head.removeChild(fontLink);
-            document.head.removeChild(preconnect1);
-            document.head.removeChild(preconnect2);
-        }
+        const currentScale = window.devicePixelRatio || 2;
+        setScale(currentScale);
     }, []);
 
     const updateOption = (key: keyof BarcodeOptions, value: any) => {
@@ -243,7 +220,7 @@ export default function BarcodePage() {
                   value={downloadFormat}
                   onValueChange={(v) => setDownloadFormat(v as "png" | "jpeg" | "webp")}
                 >
-                  <SelectTrigger className="w-[100px] h-9 text-xs">
+                  <SelectTrigger className="w-auto h-9 text-xs">
                     <SelectValue placeholder="Format" />
                   </SelectTrigger>
                   <SelectContent>
