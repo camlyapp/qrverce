@@ -769,7 +769,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
-       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+       <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
            <div className="flex items-center gap-2">
               <Wand2 className="h-6 w-6 text-primary" />
               <h1 className="font-headline text-xl font-bold tracking-tight text-primary">
@@ -805,8 +805,8 @@ export default function Home() {
               </Button>
             </div>
       </header>
-      <main className="flex-1 grid md:grid-cols-12 gap-px bg-border md:overflow-hidden">
-        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 md:overflow-y-auto">
+      <main className="flex-1 grid md:grid-cols-12 gap-px bg-border md:h-[calc(100vh-65px-41px)]">
+        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6">
             <QrCodePreview
                 qrSize={qrSize}
                 qrWrapperRef={qrWrapperRef}
@@ -822,13 +822,13 @@ export default function Home() {
                 updateOverlay={updateOverlay}
               />
         </div>
-        <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col">
-            <Tabs defaultValue="content" className="flex-grow flex flex-col">
-                <TabsList className="w-full grid grid-cols-2 rounded-none h-auto">
+        <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col md:h-full">
+            <Tabs defaultValue="content" className="flex-grow flex flex-col md:overflow-hidden">
+                <TabsList className="w-full grid grid-cols-2 rounded-none h-auto shrink-0">
                     <TabsTrigger value="content" className="py-3 rounded-none">Content</TabsTrigger>
                     <TabsTrigger value="design" className="py-3 rounded-none">Design</TabsTrigger>
                 </TabsList>
-                <TabsContent value="content" className="flex-grow overflow-hidden">
+                <TabsContent value="content" className="flex-grow md:overflow-y-auto">
                    <ScrollArea className="h-full">
                        <div className="p-4 sm:p-6">
                             <Select value={activeContentType} onValueChange={setActiveContentType}>
@@ -1149,8 +1149,8 @@ export default function Home() {
                        </div>
                    </ScrollArea>
                 </TabsContent>
-                <TabsContent value="design" className="flex-grow overflow-y-auto">
-                   <div className="p-0">
+                <TabsContent value="design" className="flex-grow md:overflow-y-auto">
+                   <ScrollArea className="h-full">
                        <Accordion type="multiple" defaultValue={['colors']} className="w-full">
                           <AccordionItem value="colors" className="border-b-0">
                             <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
@@ -1455,16 +1455,14 @@ export default function Home() {
                             </AccordionContent>
                           </AccordionItem>
                         </Accordion>
-                   </div>
+                   </ScrollArea>
                 </TabsContent>
             </Tabs>
         </div>
       </main>
-      <footer className="border-t bg-background p-4 text-center text-sm text-muted-foreground">
+      <footer className="border-t bg-background p-4 text-center text-sm text-muted-foreground shrink-0">
         © {new Date().getFullYear()} QRCodeMint. All rights reserved.
       </footer>
     </div>
   );
 }
-
-    
