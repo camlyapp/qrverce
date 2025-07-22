@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, type FC } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw, Wand2, Loader } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw, Wand2, Loader, LayoutTemplate } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateDesign, type GenerateDesignOutput } from "@/ai/flows/generate-design-flow";
 
@@ -48,6 +48,51 @@ import { Switch } from "@/components/ui/switch";
 const PRESET_COLORS = [
     "#000000", "#FFFFFF", "#FF5733", "#33FF57", "#3357FF", "#FF33A1",
     "#A133FF", "#33FFA1", "#FFC300", "#C70039", "#900C3F", "#581845"
+];
+
+const PRESET_DESIGNS: { name: string, design: GenerateDesignOutput }[] = [
+    {
+        name: "Classic Business",
+        design: {
+            colors: { background: '#FFFFFF', dots: '#000000', corner: '#000000' },
+            shapes: { dots: 'square', corners: 'square' },
+        },
+    },
+    {
+        name: "Modern Tech",
+        design: {
+            colors: { background: '#F0F8FF', dots: '#0A74DA', corner: '#053B6D' },
+            shapes: { dots: 'rounded', corners: 'dot' },
+        },
+    },
+    {
+        name: "Elegant Wedding",
+        design: {
+            colors: { background: '#FFF7F7', dots: '#8B5757', corner: '#6D4444' },
+            shapes: { dots: 'classy-rounded', corners: 'extra-rounded' },
+        },
+    },
+    {
+        name: "Playful & Bright",
+        design: {
+            colors: { background: '#FFFDE7', dots: '#FF6F61', corner: '#FFC107' },
+            shapes: { dots: 'dots', corners: 'dot' },
+        },
+    },
+    {
+        name: "Eco Green",
+        design: {
+            colors: { background: '#F0FFF4', dots: '#2E7D32', corner: '#1B5E20' },
+            shapes: { dots: 'classy', corners: 'square' },
+        },
+    },
+    {
+        name: "Minimalist Gray",
+        design: {
+            colors: { background: '#F5F5F5', dots: '#424242', corner: '#212121' },
+            shapes: { dots: 'square', corners: 'square' },
+        }
+    }
 ];
 
 interface ColorInputProps {
@@ -771,7 +816,7 @@ export default function Home() {
 
     if (downloadFormat === 'svg') {
         if (overlays.length > 0) {
-            alert("SVG download with text overlays is not supported. Please choose another format.");
+            toast({ title: "SVG with overlays not supported", description: "Please choose PNG, JPG, or WEBP for downloads with text overlays.", variant: "destructive" });
             return;
         }
         
@@ -859,6 +904,9 @@ export default function Home() {
     }
     if (design.logoDataUri) {
       setLogo(design.logoDataUri);
+    } else {
+      // If no logo is generated, we might want to clear any existing logo
+      setLogo(null);
     }
   };
 
@@ -1260,7 +1308,41 @@ export default function Home() {
                 </TabsContent>
                 <TabsContent value="design" className="flex-grow md:overflow-y-auto">
                    <ScrollArea className="h-full">
-                       <Accordion type="single" defaultValue="colors" collapsible className="w-full">
+                       <Accordion type="single" defaultValue="templates" collapsible className="w-full">
+                           <AccordionItem value="templates" className="border-b-0">
+                            <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
+                              <div className="flex items-center">
+                                <LayoutTemplate className="mr-2 h-5 w-5 text-accent" />
+                                Templates
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-4 sm:px-6">
+                               <ScrollArea>
+                                <div className="flex space-x-4 pb-4">
+                                  {PRESET_DESIGNS.map(preset => (
+                                    <div key={preset.name} className="flex-shrink-0 w-[120px] space-y-2">
+                                      <button
+                                        className="w-full aspect-square rounded-md border-2 border-transparent hover:border-primary focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        style={{ background: preset.design.colors.background }}
+                                        onClick={() => applyAiDesign(preset.design)}
+                                      >
+                                        <div className="w-full h-full flex items-center justify-center">
+                                          <div style={{
+                                            width: '50%',
+                                            height: '50%',
+                                            background: preset.design.colors.dots,
+                                            borderRadius: preset.design.shapes.dots.includes('round') ? '50%' : '0'
+                                          }}/>
+                                        </div>
+                                      </button>
+                                      <p className="text-xs text-center font-medium text-muted-foreground">{preset.name}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                                <ScrollBar orientation="horizontal" />
+                              </ScrollArea>
+                            </AccordionContent>
+                          </AccordionItem>
                           <AccordionItem value="ai-magic" className="border-b-0">
                             <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
                               <div className="flex items-center">
@@ -1438,7 +1520,7 @@ export default function Home() {
                                            </div>
                                            <div className="grid gap-2">
                                               <Label>Logo Margin: {Math.round((qrOptions.imageOptions?.margin ?? 0) / scale)}px</Label>
-                                              <Slider value={[Math.round((qrOptions.imageOptions?.margin ?? 0) / scale)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { margin: v[0] })} min={0} max={20} step={1} />
+                                              <Slider value={[Math.round((qrOptions.imageOptions?.margin ?? 0) / scale)]} onValueChange={(v) => updateNestedQrOptions('imageOptions', { margin: v[0] * scale })} min={0} max={20} step={1} />
                                            </div>
                                        </div>
                                    )}
