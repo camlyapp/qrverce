@@ -321,8 +321,8 @@ const QrCodePreview: FC<{
     activeOverlay: TextOverlay | undefined;
     isDragging: boolean;
     onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
-    overlays: TextOverlay[];
     qrSize: number;
+    scale: number;
 }> = ({
     qrWrapperRef,
     canvasRef,
@@ -330,6 +330,7 @@ const QrCodePreview: FC<{
     isDragging,
     onMouseDown,
     qrSize,
+    scale,
 }) => (
     <Card className="flex-grow flex flex-col shadow-lg">
         <CardContent className="p-4 sm:p-6 flex-grow flex items-center justify-center">
@@ -343,16 +344,17 @@ const QrCodePreview: FC<{
                         'linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)',
                 }}
             >
-                <div ref={qrWrapperRef} className="absolute inset-0" style={{ width: qrSize, height: qrSize, margin: 'auto' }} />
+                <div ref={qrWrapperRef} className="absolute inset-0" />
                 <canvas
                     ref={canvasRef}
-                    width={qrSize}
-                    height={qrSize}
+                    width={qrSize * scale}
+                    height={qrSize * scale}
                     className={cn(
                         "absolute top-0 left-0 w-full h-full",
                         activeOverlay ? "cursor-grab" : "",
                         isDragging ? "cursor-grabbing" : ""
                     )}
+                    style={{ width: qrSize, height: qrSize }}
                     onMouseDown={onMouseDown}
                 />
             </div>
@@ -361,6 +363,7 @@ const QrCodePreview: FC<{
 );
 
 export default function Home() {
+  const [scale, setScale] = useState(2);
   const [qrSize, setQrSize] = useState(400);
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
@@ -403,7 +406,6 @@ export default function Home() {
   const qrCodeRef = useRef<QRCodeStyling | null>(null);
   const qrWrapperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const finalCanvasRef = useRef<HTMLCanvasElement>(null);
   const qrImageRef = useRef<HTMLImageElement | null>(null);
 
   const [overlays, setOverlays] = useState<TextOverlay[]>([]);
@@ -413,6 +415,10 @@ export default function Home() {
 
   const activeOverlay = overlays.find(o => o.id === activeOverlayId);
   
+  useEffect(() => {
+    setScale(window.devicePixelRatio || 2);
+  }, []);
+
   const handleColorChange = (updater: (value: string) => void) => (e: React.ChangeEvent<HTMLInputElement> | string) => {
     const value = typeof e === 'string' ? e : e.target.value;
     updater(value);
@@ -442,13 +448,13 @@ export default function Home() {
       id: newId,
       text: "New Text",
       color: "#000000",
-      fontSize: 40,
+      fontSize: 20 * scale,
       fontFamily: "Inter",
       fontWeight: 'normal',
       fontStyle: 'normal',
       textAlign: 'center',
       rotation: 0,
-      position: { x: qrSize / 2, y: qrSize / 2 },
+      position: { x: (qrSize / 2) * scale, y: (qrSize / 2) * scale },
     };
     setOverlays([...overlays, newOverlay]);
     setActiveOverlayId(newId);
@@ -480,19 +486,17 @@ export default function Home() {
     visibleCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
     if (qrImageRef.current) {
-        visibleCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
+        visibleCtx.drawImage(qrImageRef.current, 0, 0, qrSize * scale, qrSize * scale);
     }
     
     overlays.forEach(o => drawOverlay(visibleCtx, o));
   }
   
   const drawAllLayers = async () => {
-    const finalCtx = finalCanvasRef.current?.getContext("2d");
     const visibleCtx = canvasRef.current?.getContext("2d");
 
-    if (!finalCtx || !visibleCtx || !qrCodeRef.current || !finalCanvasRef.current || !canvasRef.current) return;
+    if (!visibleCtx || !qrCodeRef.current || !canvasRef.current) return;
     
-    finalCtx.clearRect(0, 0, finalCanvasRef.current.width, finalCanvasRef.current.height);
     visibleCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     
     const qrDataUrl = await qrCodeRef.current.getRawData('png');
@@ -507,11 +511,9 @@ export default function Home() {
         img.src = URL.createObjectURL(qrDataUrl as Blob);
     });
 
-    finalCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
-    visibleCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
+    visibleCtx.drawImage(qrImageRef.current, 0, 0, qrSize * scale, qrSize * scale);
     
     overlays.forEach(o => {
-      drawOverlay(finalCtx, o);
       drawOverlay(visibleCtx, o);
     });
   };
@@ -595,8 +597,9 @@ export default function Home() {
   useEffect(() => {
       const finalQrOptions: QRCodeStylingOptions = {
           ...qrOptions,
-          width: qrSize,
-          height: qrSize,
+          width: qrSize * scale,
+          height: qrSize * scale,
+          margin: (qrOptions.margin ?? 0) * scale / 10,
           data: qrContent,
           image: logo ?? undefined,
           dotsOptions: {
@@ -630,6 +633,10 @@ export default function Home() {
           cornersDotOptions: {
               ...qrOptions.cornersDotOptions,
               type: qrOptions.cornersDotOptions?.type === 'default' ? undefined : qrOptions.cornersDotOptions?.type
+          },
+          imageOptions: {
+            ...qrOptions.imageOptions,
+            margin: (qrOptions.imageOptions?.margin ?? 0) * scale,
           }
       };
 
@@ -643,10 +650,11 @@ export default function Home() {
           if(qrWrapperRef.current.firstChild) {
             qrWrapperRef.current.removeChild(qrWrapperRef.current.firstChild);
           }
-          qrCodeRef.current.append(qrWrapperRef.current);
+          // We don't append the QR code to the DOM anymore, we draw it on canvas
+          // qrCodeRef.current.append(qrWrapperRef.current);
           drawAllLayers();
       }
-  }, [qrContent, qrOptions, logo, dotsGradient, backgroundGradient, qrSize]);
+  }, [qrContent, qrOptions, logo, dotsGradient, backgroundGradient, qrSize, scale]);
   
   useEffect(() => {
     drawOverlaysOnly();
@@ -656,8 +664,8 @@ export default function Home() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const mouseX = (e.clientX - rect.left) * (qrSize / rect.width);
-    const mouseY = (e.clientY - rect.top) * (qrSize / rect.height);
+    const mouseX = (e.clientX - rect.left) * scale;
+    const mouseY = (e.clientY - rect.top) * scale;
 
     const clickedOverlay = [...overlays].reverse().find(overlay => {
         const ctx = document.createElement('canvas').getContext('2d')!;
@@ -674,13 +682,16 @@ export default function Home() {
         const rotatedX = dx * Math.cos(-angle) - dy * Math.sin(-angle);
         const rotatedY = dx * Math.sin(-angle) + dy * Math.cos(-angle);
         
+        const ascent = textMetrics.actualBoundingBoxAscent;
+        const descent = textMetrics.actualBoundingBoxDescent;
+
         let x = 0;
         if(overlay.textAlign === 'center') x = -textMetrics.width / 2;
         if(overlay.textAlign === 'right') x = -textMetrics.width;
 
-        const y = -(textMetrics.actualBoundingBoxAscent ?? overlay.fontSize / 2);
+        const y = -ascent;
         const width = textMetrics.width;
-        const height = (textMetrics.actualBoundingBoxAscent ?? overlay.fontSize / 2) + (textMetrics.actualBoundingBoxDescent ?? overlay.fontSize / 2);
+        const height = ascent + descent;
 
         return rotatedX >= x && rotatedX <= x + width && rotatedY >= y && rotatedY <= y + height;
     });
@@ -694,14 +705,14 @@ export default function Home() {
     }
   };
   
-    useEffect(() => {
+  useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging || !activeOverlay) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
-      const mouseX = (e.clientX - rect.left) * (qrSize / rect.width);
-      const mouseY = (e.clientY - rect.top) * (qrSize / rect.height);
+      const mouseX = (e.clientX - rect.left) * scale;
+      const mouseY = (e.clientY - rect.top) * scale;
   
       setOverlays(overlays.map(o => o.id === activeOverlay.id ? { 
           ...o, 
@@ -725,19 +736,31 @@ export default function Home() {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, activeOverlay, dragStart, overlays, qrSize]);
+  }, [isDragging, activeOverlay, dragStart, overlays, qrSize, scale]);
 
 
   const handleDownload = async () => {
-    await drawAllLayers();
     const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = qrSize;
-    finalCanvas.height = qrSize;
+    finalCanvas.width = qrSize * scale;
+    finalCanvas.height = qrSize * scale;
     const finalCtx = finalCanvas.getContext('2d');
 
-    if(!finalCtx || !qrImageRef.current) return;
+    if(!finalCtx || !qrCodeRef.current) return;
+    
+    // Redraw for download to ensure latest state
+    const qrData = await qrCodeRef.current.getRawData('png');
+    if (!qrData) return;
 
-    finalCtx.drawImage(qrImageRef.current, 0, 0, qrSize, qrSize);
+    const img = await new Promise<HTMLImageElement>(resolve => {
+      const image = new window.Image();
+      image.onload = () => {
+        URL.revokeObjectURL(image.src);
+        resolve(image);
+      };
+      image.src = URL.createObjectURL(qrData as Blob);
+    });
+    
+    finalCtx.drawImage(img, 0, 0, qrSize * scale, qrSize * scale);
     overlays.forEach(o => drawOverlay(finalCtx, o));
 
     if (downloadFormat === 'svg') {
@@ -745,18 +768,17 @@ export default function Home() {
             alert("SVG download with text overlays is not supported. Please choose another format.");
             return;
         }
-        if (qrCodeRef.current) {
-            const svgString = await qrCodeRef.current.getRawData('svg');
-            const blob = new Blob([svgString!], { type: "image/svg+xml" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `qrcode.svg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
+        
+        const svgString = await qrCodeRef.current.getRawData('svg');
+        const blob = new Blob([svgString!], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `qrcode.svg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
         return;
     }
 
@@ -850,15 +872,15 @@ export default function Home() {
             </div>
       </header>
       <main className="flex-1 grid md:grid-cols-12 gap-px bg-border md:h-[calc(100vh-65px)]">
-        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 md:overflow-y-auto">
+        <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6">
             <QrCodePreview
                 qrWrapperRef={qrWrapperRef}
                 canvasRef={canvasRef}
                 activeOverlay={activeOverlay}
                 isDragging={isDragging}
                 onMouseDown={handleMouseDown}
-                overlays={overlays}
                 qrSize={qrSize}
+                scale={scale}
               />
         </div>
         <div className="md:col-span-5 lg:col-span-4 bg-background flex flex-col md:h-[calc(100vh-65px)]">
@@ -1410,8 +1432,8 @@ export default function Home() {
                                                    />
                                                  </div>
                                                   <div className="grid gap-2">
-                                                    <Label>Font Size: {activeOverlay.fontSize}px</Label>
-                                                    <Slider value={[activeOverlay.fontSize]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0]})} min={10} max={80} step={1} />
+                                                    <Label>Font Size: {Math.round(activeOverlay.fontSize / scale)}px</Label>
+                                                    <Slider value={[activeOverlay.fontSize / scale]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0] * scale})} min={10} max={80} step={1} />
                                                  </div>
                                                   <div className="grid gap-2">
                                                    <Label>Style</Label>
