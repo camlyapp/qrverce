@@ -1109,12 +1109,12 @@ export default function Home() {
                             <Select value={qrOptions.dotsOptions?.type} onValueChange={(v) => updateNestedQrOptions('dotsOptions', {type: v})}>
                                 <SelectTrigger><SelectValue/></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="rounded">Rounded</SelectItem>
+                                    <SelectItem value="square">Square</SelectItem>
                                     <SelectItem value="dots">Dots</SelectItem>
+                                    <SelectItem value="rounded">Rounded</SelectItem>
+                                    <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
                                     <SelectItem value="classy">Classy</SelectItem>
                                     <SelectItem value="classy-rounded">Classy Rounded</SelectItem>
-                                    <SelectItem value="square">Square</SelectItem>
-                                    <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1124,9 +1124,9 @@ export default function Home() {
                                 <Select value={qrOptions.cornersSquareOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersSquareOptions', {type: v})}>
                                     <SelectTrigger><SelectValue/></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="dot">Dot</SelectItem>
                                         <SelectItem value="square">Square</SelectItem>
                                         <SelectItem value="extra-rounded">Extra Rounded</SelectItem>
+                                        <SelectItem value="dot">Dot</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -1135,8 +1135,8 @@ export default function Home() {
                                 <Select value={qrOptions.cornersDotOptions?.type} onValueChange={(v) => updateNestedQrOptions('cornersDotOptions', {type: v})}>
                                     <SelectTrigger><SelectValue/></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="dot">Dot</SelectItem>
                                         <SelectItem value="square">Square</SelectItem>
+                                        <SelectItem value="dot">Dot</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
