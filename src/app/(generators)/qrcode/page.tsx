@@ -385,6 +385,7 @@ export default function QrCodePage() {
   const [qrSize, setQrSize] = useState(300);
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
+  const [downloadSize, setDownloadSize] = useState(1024);
   
   const [activeContentType, setActiveContentType] = useState('text');
   
@@ -806,28 +807,53 @@ export default function QrCodePage() {
 
 
   const handleDownload = async () => {
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = qrSize * scale;
-    finalCanvas.height = qrSize * scale;
-    const finalCtx = finalCanvas.getContext('2d');
-
-    if(!finalCtx || !qrCodeRef.current) return;
-    
-    // Redraw for download to ensure latest state
-    const qrData = await qrCodeRef.current.getRawData('png');
-    if (!qrData) return;
-
-    const img = await new Promise<HTMLImageElement>(resolve => {
-      const image = new window.Image();
-      image.onload = () => {
-        URL.revokeObjectURL(image.src);
-        resolve(image);
-      };
-      image.src = URL.createObjectURL(qrData as Blob);
-    });
-    
-    finalCtx.drawImage(img, 0, 0, qrSize * scale, qrSize * scale);
-    overlays.forEach(o => drawOverlay(finalCtx, o));
+    // Create a new QRCodeStyling instance specifically for download
+    // to avoid affecting the on-screen preview.
+    const downloadQrOptions = {
+        ...qrOptions,
+        width: downloadSize,
+        height: downloadSize,
+        margin: (qrOptions.margin ?? 0) * (downloadSize / qrSize), // Scale margin proportionally
+        data: qrContent,
+        image: logo ?? undefined,
+        dotsOptions: {
+            ...qrOptions.dotsOptions,
+            ...(dotsGradient.enabled ? {
+                gradient: {
+                    type: dotsGradient.type,
+                    rotation: dotsGradient.rotation,
+                    colorStops: [{ offset: 0, color: dotsGradient.color1 }, { offset: 1, color: dotsGradient.color2 }]
+                }
+            } : {
+                color: qrOptions.dotsOptions?.color
+            })
+        },
+        backgroundOptions: {
+            ...qrOptions.backgroundOptions,
+            ...(backgroundGradient.enabled ? {
+                gradient: {
+                    type: backgroundGradient.type,
+                    rotation: backgroundGradient.rotation,
+                    colorStops: [{ offset: 0, color: backgroundGradient.color1 }, { offset: 1, color: backgroundGradient.color2 }]
+                }
+            } : {
+                color: qrOptions.backgroundOptions?.color
+            })
+        },
+        cornersSquareOptions: {
+            ...qrOptions.cornersSquareOptions,
+            type: qrOptions.cornersSquareOptions?.type === 'default' ? undefined : qrOptions.cornersSquareOptions?.type
+        },
+        cornersDotOptions: {
+            ...qrOptions.cornersDotOptions,
+            type: qrOptions.cornersDotOptions?.type === 'default' ? undefined : qrOptions.cornersDotOptions?.type
+        },
+        imageOptions: {
+          ...qrOptions.imageOptions,
+          margin: (qrOptions.imageOptions?.margin ?? 0) * (downloadSize / qrSize), // Scale image margin
+        }
+    };
+    const downloadQrCode = new QRCodeStyling(downloadQrOptions);
 
     if (downloadFormat === 'svg') {
         if (overlays.length > 0) {
@@ -835,7 +861,7 @@ export default function QrCodePage() {
             return;
         }
         
-        const svgString = await qrCodeRef.current.getRawData('svg');
+        const svgString = await downloadQrCode.getRawData('svg');
         const blob = new Blob([svgString!], { type: "image/svg+xml" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -847,6 +873,42 @@ export default function QrCodePage() {
         URL.revokeObjectURL(url);
         return;
     }
+
+    // For raster formats, we need to draw overlays on a new canvas
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = downloadSize;
+    finalCanvas.height = downloadSize;
+    const finalCtx = finalCanvas.getContext('2d');
+
+    if(!finalCtx) return;
+    
+    const qrData = await downloadQrCode.getRawData('png');
+    if (!qrData) return;
+
+    const img = await new Promise<HTMLImageElement>(resolve => {
+      const image = new window.Image();
+      image.onload = () => {
+        URL.revokeObjectURL(image.src);
+        resolve(image);
+      };
+      image.src = URL.createObjectURL(qrData as Blob);
+    });
+    
+    finalCtx.drawImage(img, 0, 0, downloadSize, downloadSize);
+
+    // Scale and draw overlays onto the download canvas
+    const downloadScale = downloadSize / (qrSize * scale);
+    overlays.forEach(o => {
+        const scaledOverlay = {
+            ...o,
+            position: {
+                x: o.position.x * downloadScale,
+                y: o.position.y * downloadScale
+            },
+            fontSize: o.fontSize * downloadScale
+        };
+        drawOverlay(finalCtx, scaledOverlay);
+    });
 
     const mimeType = downloadFormat === "jpeg" ? "image/jpeg" : `image/${downloadFormat}`;
     const url = finalCanvas.toDataURL(mimeType, 1.0);
@@ -968,11 +1030,23 @@ export default function QrCodePage() {
         <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 items-center justify-center relative">
             <div className="absolute top-4 right-4 flex items-center gap-2 sm:gap-4">
               <div className="flex items-center gap-2">
+                 <div className="grid gap-2">
+                    <Label htmlFor="download-size" className="sr-only">Download Size</Label>
+                    <Input 
+                      id="download-size"
+                      type="number" 
+                      value={downloadSize} 
+                      onChange={(e) => setDownloadSize(Number(e.target.value))} 
+                      className="w-24 h-9 text-xs"
+                      min={16}
+                      step={16}
+                    />
+                 </div>
                 <Select
                   value={downloadFormat}
                   onValueChange={(v) => setDownloadFormat(v as FileExtension)}
                 >
-                  <SelectTrigger id="format-select" className="w-[100px]">
+                  <SelectTrigger id="format-select" className="w-[100px] h-9 text-xs">
                     <SelectValue placeholder="Format" />
                   </SelectTrigger>
                   <SelectContent>
@@ -985,7 +1059,7 @@ export default function QrCodePage() {
               </div>
               <Button
                 onClick={handleDownload}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto h-9"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Download
@@ -1705,5 +1779,6 @@ export default function QrCodePage() {
     </div>
   );
 }
+
 
 
