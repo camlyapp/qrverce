@@ -405,7 +405,7 @@ export default function QrCodePage() {
   const { toast } = useToast();
   const [scale, setScale] = useState(2);
   const [qrSize, setQrSize] = useState(300);
-  const [qrContent, setQrContent] = useState("https://firebase.google.com/");
+  const [qrContent, setQrContent] = useState("https://camly.in");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
   const [downloadSize, setDownloadSize] = useState(1024);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
@@ -413,7 +413,7 @@ export default function QrCodePage() {
   const [activeContentType, setActiveContentType] = useState('text');
   
   // States for different QR types
-  const [textData, setTextData] = useState("https://firebase.google.com/");
+  const [textData, setTextData] = useState("https://camly.in");
   const [vCardData, setVCardData] = useState(vCardInitialState);
   const [meCardData, setMeCardData] = useState(meCardInitialState);
   const [wifiData, setWifiData] = useState(wifiInitialState);
@@ -2070,6 +2070,7 @@ export default function QrCodePage() {
 
 
       
+
 
 
 

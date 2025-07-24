@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: APP_DESCRIPTION,
   applicationName: APP_NAME,
   keywords: ["QR Code Generator", "Barcode Generator", "Free QR Code", "Custom QR Code", "AI QR Code", "CodeMint"],
-  authors: [{ name: "Camly", url: "https://firebase.google.com" }],
+  authors: [{ name: "Camly", url: "https://camly.in" }],
   creator: "Camly",
   publisher: "Camly",
   robots: "index, follow",
