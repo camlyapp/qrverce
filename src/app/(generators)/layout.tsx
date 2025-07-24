@@ -96,8 +96,8 @@ export default function GeneratorsLayout({
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <nav className="flex gap-4 sm:gap-6 text-sm">
               <Link href="/terms" className="text-muted-foreground hover:text-foreground">Terms</Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground">Privacy</Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground">Contact</Link>
+              <Link href="/privacy" className="text-muted-foreground hover:text-foreground">Privacy</Link>
+              <Link href="/contact" className="text-muted-foreground hover:text-foreground">Contact</Link>
             </nav>
             <div className="hidden sm:block h-5 w-px bg-border" />
             <div className="flex gap-4">

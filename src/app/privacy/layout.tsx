@@ -1,13 +1,11 @@
 
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
 import { WandSparkles, Twitter, Github, Dribbble } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-
-export default function TermsLayout({
+export default function PrivacyLayout({
   children,
 }: {
   children: React.ReactNode;
