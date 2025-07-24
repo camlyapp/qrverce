@@ -335,7 +335,7 @@ export default function BarcodePage() {
         const downloadScale = downloadQuality;
 
         const tempBarcodeCanvas = document.createElement('canvas');
-        drawBarcode(tempBarcodeCanvas, options, barcodeData, downloadScale);
+        drawBarcode(tempBarcodeCanvas, options, barcodeData, downloadScale * scale);
         
         const finalCanvas = document.createElement('canvas');
         finalCanvas.width = tempBarcodeCanvas.width;
@@ -345,7 +345,7 @@ export default function BarcodePage() {
         
         finalCtx.drawImage(tempBarcodeCanvas, 0, 0);
 
-        const overlayScaleFactor = tempBarcodeCanvas.width / barcodeCanvas.width;
+        const overlayScaleFactor = (tempBarcodeCanvas.width / barcodeCanvas.width);
 
         imageOverlays.forEach(o => {
             const scaledOverlay = {
@@ -355,8 +355,7 @@ export default function BarcodePage() {
                     y: o.position.y * overlayScaleFactor
                 },
                 width: o.width * overlayScaleFactor,
-                height: o.height * overlayScaleFactor,
-                fontSize: (o as any).fontSize ? (o as any).fontSize * overlayScaleFactor : undefined
+                height: o.height * overlayScaleFactor
             };
             drawImageOverlay(finalCtx, scaledOverlay);
         });
