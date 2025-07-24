@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef, type FC } from "react";
 import Image from "next/image";
 import QRCodeStyling, { type Options as QRCodeStylingOptions, type FileExtension } from 'qr-code-styling';
-import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw, Wand2, Loader, LayoutTemplate, Building, Briefcase, File as FileIcon } from "lucide-react";
+import { Download, Palette, Settings2, Type, RotateCcw, Move, Trash2, PlusCircle, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Contact, Wifi, Phone, MessageSquare, Mail, MapPin, Calendar as CalendarIcon, Link as LinkIcon, Edit, User, MessageCircle, Video, DollarSign, Bitcoin, Twitter, Facebook, Instagram, FileText, Upload, ImageIcon, Square, Dot, Contrast, RotateCw, Wand2, Loader, LayoutTemplate, Building, Briefcase, File as FileIcon, ImagePlus, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateDesign, type GenerateDesignOutput } from "@/ai/flows/generate-design-flow";
 
@@ -123,6 +123,19 @@ interface TextOverlay {
   rotation: number;
   position: { x: number; y: number };
 }
+
+interface ImageOverlay {
+  id: number;
+  src: string;
+  name: string;
+  htmlImage: HTMLImageElement;
+  width: number;
+  height: number;
+  rotation: number;
+  position: { x: number; y: number };
+}
+
+type DragMode = 'move' | 'resize-br' | 'rotate';
 
 const vCardInitialState = {
   firstName: '',
@@ -336,7 +349,8 @@ const defaultGradientState: GradientState = {
 const QrCodePreview: FC<{
     qrWrapperRef: React.RefObject<HTMLDivElement>;
     canvasRef: React.RefObject<HTMLCanvasElement>;
-    activeOverlay: TextOverlay | undefined;
+    activeOverlayId: number | null;
+    activeOverlayType: 'text' | 'image' | null;
     isDragging: boolean;
     onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
     onTouchStart: (e: React.TouchEvent<HTMLCanvasElement>) => void;
@@ -345,13 +359,15 @@ const QrCodePreview: FC<{
 }> = ({
     qrWrapperRef,
     canvasRef,
-    activeOverlay,
+    activeOverlayId,
+    activeOverlayType,
     isDragging,
     onMouseDown,
     onTouchStart,
     qrSize,
     scale,
 }) => {
+    const cursor = isDragging ? "grabbing" : (activeOverlayId ? "grab" : "");
     return (
         <Card className="flex-grow flex flex-col shadow-lg w-full max-w-lg aspect-square">
             <CardContent className="p-6 flex-grow flex items-center justify-center">
@@ -372,11 +388,7 @@ const QrCodePreview: FC<{
                             ref={canvasRef}
                             width={qrSize * scale}
                             height={qrSize * scale}
-                            className={cn(
-                                "absolute top-0 left-0 w-full h-full",
-                                activeOverlay ? "cursor-grab" : "",
-                                isDragging ? "cursor-grabbing" : ""
-                            )}
+                            className={cn("absolute top-0 left-0 w-full h-full", `cursor-${cursor}`)}
                             onMouseDown={onMouseDown}
                             onTouchStart={onTouchStart}
                         />
@@ -439,12 +451,17 @@ export default function QrCodePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const qrImageRef = useRef<HTMLImageElement | null>(null);
 
-  const [overlays, setOverlays] = useState<TextOverlay[]>([]);
+  const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
+  const [imageOverlays, setImageOverlays] = useState<ImageOverlay[]>([]);
   const [activeOverlayId, setActiveOverlayId] = useState<number | null>(null);
+  const [activeOverlayType, setActiveOverlayType] = useState<'text' | 'image' | null>(null);
+
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragMode, setDragMode] = useState<DragMode>('move');
 
-  const activeOverlay = overlays.find(o => o.id === activeOverlayId);
+  const activeTextOverlay = activeOverlayType === 'text' ? textOverlays.find(o => o.id === activeOverlayId) : undefined;
+  const activeImageOverlay = activeOverlayType === 'image' ? imageOverlays.find(o => o.id === activeOverlayId) : undefined;
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -472,11 +489,11 @@ export default function QrCodePage() {
       }));
   }
 
-  const updateOverlay = (id: number, updates: Partial<TextOverlay>) => {
-      setOverlays(overlays.map(o => o.id === id ? { ...o, ...updates } : o));
+  const updateTextOverlay = (id: number, updates: Partial<TextOverlay>) => {
+      setTextOverlays(textOverlays.map(o => o.id === id ? { ...o, ...updates } : o));
   };
   
-  const addOverlay = () => {
+  const addTextOverlay = () => {
     const newId = Date.now();
     const newOverlay: TextOverlay = {
       id: newId,
@@ -490,18 +507,62 @@ export default function QrCodePage() {
       rotation: 0,
       position: { x: (qrSize / 2) * scale, y: (qrSize / 2) * scale },
     };
-    setOverlays([...overlays, newOverlay]);
+    setTextOverlays([...textOverlays, newOverlay]);
     setActiveOverlayId(newId);
+    setActiveOverlayType('text');
   };
   
-  const deleteOverlay = (id: number) => {
-    setOverlays(overlays.filter(o => o.id !== id));
+  const deleteTextOverlay = (id: number) => {
+    setTextOverlays(textOverlays.filter(o => o.id !== id));
     if (activeOverlayId === id) {
-      setActiveOverlayId(overlays.length > 1 ? overlays.find(o => o.id !== id)!.id : null);
+      setActiveOverlayId(null);
+      setActiveOverlayType(null);
     }
   };
 
-  const drawOverlay = (ctx: CanvasRenderingContext2D, overlay: TextOverlay) => {
+  const updateImageOverlay = (id: number, updates: Partial<ImageOverlay>) => {
+    setImageOverlays(overlays => overlays.map(o => o.id === id ? { ...o, ...updates } : o));
+  };
+
+  const addImageOverlay = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new window.Image();
+        img.onload = () => {
+          const newId = Date.now();
+          const newOverlay: ImageOverlay = {
+            id: newId,
+            src: img.src,
+            name: file.name,
+            htmlImage: img,
+            width: 100 * scale,
+            height: (img.height / img.width) * 100 * scale,
+            rotation: 0,
+            position: { x: (qrSize / 2) * scale, y: (qrSize / 2) * scale },
+          };
+          setImageOverlays(overlays => [...overlays, newOverlay]);
+          setActiveOverlayId(newId);
+          setActiveOverlayType('image');
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset file input to allow re-uploading the same file
+    e.target.value = '';
+  };
+
+  const deleteImageOverlay = (id: number) => {
+    setImageOverlays(overlays => overlays.filter(o => o.id !== id));
+    if (activeOverlayId === id) {
+      setActiveOverlayId(null);
+      setActiveOverlayType(null);
+    }
+  };
+
+  const drawTextOverlay = (ctx: CanvasRenderingContext2D, overlay: TextOverlay) => {
       ctx.save();
       ctx.translate(overlay.position.x, overlay.position.y);
       ctx.rotate((overlay.rotation * Math.PI) / 180);
@@ -512,6 +573,39 @@ export default function QrCodePage() {
       ctx.fillText(overlay.text, 0, 0);
       ctx.restore();
   };
+  
+  const drawImageOverlay = (ctx: CanvasRenderingContext2D, overlay: ImageOverlay) => {
+      ctx.save();
+      ctx.translate(overlay.position.x, overlay.position.y);
+      ctx.rotate((overlay.rotation * Math.PI) / 180);
+      ctx.drawImage(overlay.htmlImage, -overlay.width / 2, -overlay.height / 2, overlay.width, overlay.height);
+
+      if (activeOverlayId === overlay.id && activeOverlayType === 'image') {
+        // Draw selection handles
+        ctx.strokeStyle = '#09f';
+        ctx.lineWidth = 2 * scale;
+        ctx.strokeRect(-overlay.width / 2, -overlay.height / 2, overlay.width, overlay.height);
+
+        // Draw resize handle
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(overlay.width / 2, overlay.height / 2, 8 * scale, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+
+        // Draw rotation handle
+        ctx.beginPath();
+        ctx.moveTo(0, -overlay.height/2);
+        ctx.lineTo(0, -overlay.height/2 - 20 * scale);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, -overlay.height/2 - 20 * scale, 8 * scale, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+  }
 
   const drawOverlaysOnly = () => {
     const visibleCtx = canvasRef.current?.getContext("2d");
@@ -523,7 +617,8 @@ export default function QrCodePage() {
         visibleCtx.drawImage(qrImageRef.current, 0, 0, qrSize * scale, qrSize * scale);
     }
     
-    overlays.forEach(o => drawOverlay(visibleCtx, o));
+    textOverlays.forEach(o => drawTextOverlay(visibleCtx, o));
+    imageOverlays.forEach(o => drawImageOverlay(visibleCtx, o));
   }
   
   const drawAllLayers = async () => {
@@ -547,9 +642,8 @@ export default function QrCodePage() {
 
     visibleCtx.drawImage(qrImageRef.current, 0, 0, qrSize * scale, qrSize * scale);
     
-    overlays.forEach(o => {
-      drawOverlay(visibleCtx, o);
-    });
+    textOverlays.forEach(o => drawTextOverlay(visibleCtx, o));
+    imageOverlays.forEach(o => drawImageOverlay(visibleCtx, o));
   };
   
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -697,7 +791,7 @@ export default function QrCodePage() {
   
   useEffect(() => {
     drawOverlaysOnly();
-  }, [overlays, activeOverlayId]);
+  }, [textOverlays, imageOverlays, activeOverlayId, activeOverlayType]);
 
   const handleInteractionStart = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
@@ -705,8 +799,58 @@ export default function QrCodePage() {
     const rect = canvas.getBoundingClientRect();
     const x = (clientX - rect.left) * (canvas.width / rect.width);
     const y = (clientY - rect.top) * (canvas.height / rect.height);
+    
+    // Check image overlays first (they are on top)
+    const clickedImageOverlay = [...imageOverlays].reverse().find(overlay => {
+        const cx = overlay.position.x;
+        const cy = overlay.position.y;
+        const angle = overlay.rotation * (Math.PI / 180);
+        
+        // Transform click coordinates to the image's local coordinate system
+        const dx = x - cx;
+        const dy = y - cy;
+        const rotatedX = dx * Math.cos(-angle) - dy * Math.sin(-angle);
+        const rotatedY = dx * Math.sin(-angle) + dy * Math.cos(-angle);
+        
+        // Check resize handle
+        const handleSize = 8 * scale;
+        const resizeHandleX = overlay.width / 2;
+        const resizeHandleY = overlay.height / 2;
+        if (Math.sqrt((rotatedX - resizeHandleX)**2 + (rotatedY - resizeHandleY)**2) < handleSize) {
+          setDragMode('resize-br');
+          return true;
+        }
 
-    const clickedOverlay = [...overlays].reverse().find(overlay => {
+        // Check rotation handle
+        const rotationHandleY = -overlay.height / 2 - 20 * scale;
+        if (Math.sqrt(rotatedX**2 + (rotatedY - rotationHandleY)**2) < handleSize) {
+          setDragMode('rotate');
+          return true;
+        }
+
+        // Check move
+        if (rotatedX >= -overlay.width / 2 && rotatedX <= overlay.width / 2 && rotatedY >= -overlay.height / 2 && rotatedY <= overlay.height / 2) {
+          setDragMode('move');
+          return true;
+        }
+
+        return false;
+    });
+
+    if (clickedImageOverlay) {
+      setActiveOverlayId(clickedImageOverlay.id);
+      setActiveOverlayType('image');
+      setIsDragging(true);
+      if (dragMode === 'move') {
+        setDragStart({ x: x - clickedImageOverlay.position.x, y: y - clickedImageOverlay.position.y });
+      } else {
+        setDragStart({ x, y });
+      }
+      return;
+    }
+
+    // Check text overlays
+    const clickedTextOverlay = [...textOverlays].reverse().find(overlay => {
         const ctx = document.createElement('canvas').getContext('2d')!;
         ctx.font = `${overlay.fontStyle} ${overlay.fontWeight} ${overlay.fontSize}px "${overlay.fontFamily}"`;
         const textMetrics = ctx.measureText(overlay.text);
@@ -735,12 +879,15 @@ export default function QrCodePage() {
         return rotatedX >= boxX && rotatedX <= boxX + width && rotatedY >= boxY && rotatedY <= boxY + height;
     });
 
-    if (clickedOverlay) {
-        setActiveOverlayId(clickedOverlay.id);
+    if (clickedTextOverlay) {
+        setActiveOverlayId(clickedTextOverlay.id);
+        setActiveOverlayType('text');
+        setDragMode('move');
         setIsDragging(true);
-        setDragStart({ x: x - clickedOverlay.position.x, y: y - clickedOverlay.position.y });
+        setDragStart({ x: x - clickedTextOverlay.position.x, y: y - clickedTextOverlay.position.y });
     } else {
       setActiveOverlayId(null);
+      setActiveOverlayType(null);
     }
   };
 
@@ -757,43 +904,54 @@ export default function QrCodePage() {
   useEffect(() => {
     let animationFrameId: number;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging && activeOverlay) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = requestAnimationFrame(() => {
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-          const rect = canvas.getBoundingClientRect();
-          const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-          const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-          updateOverlay(activeOverlay.id, {
-            position: {
-              x: x - dragStart.x,
-              y: y - dragStart.y,
-            },
-          });
-        });
-      }
+    const handleMove = (clientX: number, clientY: number) => {
+      if (!isDragging || !activeOverlayId) return;
+      
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = (clientX - rect.left) * (canvas.width / rect.width);
+        const y = (clientY - rect.top) * (canvas.height / rect.height);
+        
+        if (activeOverlayType === 'text' && activeTextOverlay) {
+            updateTextOverlay(activeOverlayId, {
+              position: { x: x - dragStart.x, y: y - dragStart.y },
+            });
+        } else if (activeOverlayType === 'image' && activeImageOverlay) {
+          if (dragMode === 'move') {
+              updateImageOverlay(activeOverlayId, {
+                position: { x: x - dragStart.x, y: y - dragStart.y },
+              });
+          } else if (dragMode === 'rotate') {
+              const dx = x - activeImageOverlay.position.x;
+              const dy = y - activeImageOverlay.position.y;
+              const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+              updateImageOverlay(activeOverlayId, { rotation: angle });
+          } else if (dragMode === 'resize-br') {
+              const dx = x - activeImageOverlay.position.x;
+              const dy = y - activeImageOverlay.position.y;
+              const angle = activeImageOverlay.rotation * (Math.PI / 180);
+
+              const rotatedDx = dx * Math.cos(-angle) - dy * Math.sin(-angle);
+
+              const originalAspectRatio = activeImageOverlay.htmlImage.height / activeImageOverlay.htmlImage.width;
+              const newWidth = Math.abs(rotatedDx * 2);
+              const newHeight = newWidth * originalAspectRatio;
+
+              updateImageOverlay(activeOverlayId, { width: newWidth, height: newHeight });
+          }
+        }
+      });
     };
 
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
     const handleTouchMove = (e: TouchEvent) => {
-      if (isDragging && activeOverlay && e.touches.length > 0) {
-        e.preventDefault();
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = requestAnimationFrame(() => {
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-          const rect = canvas.getBoundingClientRect();
-          const x = (e.touches[0].clientX - rect.left) * (canvas.width / rect.width);
-          const y = (e.touches[0].clientY - rect.top) * (canvas.height / rect.height);
-          updateOverlay(activeOverlay.id, {
-            position: {
-              x: x - dragStart.x,
-              y: y - dragStart.y,
-            },
-          });
-        });
-      }
+       if (isDragging && e.touches.length > 0) {
+         e.preventDefault();
+         handleMove(e.touches[0].clientX, e.touches[0].clientY);
+       }
     };
 
     const handleInteractionEnd = () => {
@@ -814,7 +972,7 @@ export default function QrCodePage() {
       window.removeEventListener("touchend", handleInteractionEnd);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isDragging, activeOverlay, dragStart, overlays, scale]);
+  }, [isDragging, activeOverlayId, activeOverlayType, dragStart, dragMode, scale, textOverlays, imageOverlays]);
 
 
   const handleDownload = async () => {
@@ -868,8 +1026,8 @@ export default function QrCodePage() {
     const downloadQrCode = new QRCodeStyling(downloadQrOptions);
 
     if (downloadFormat === 'svg') {
-        if (overlays.length > 0) {
-            toast({ title: "SVG with overlays not supported", description: "Please choose PNG, JPG, or WEBP for downloads with text overlays.", variant: "destructive" });
+        if (textOverlays.length > 0 || imageOverlays.length > 0) {
+            toast({ title: "SVG with overlays not supported", description: "Please choose PNG, JPG, or WEBP for downloads with text or image overlays.", variant: "destructive" });
             return;
         }
         
@@ -909,17 +1067,29 @@ export default function QrCodePage() {
     finalCtx.drawImage(img, 0, 0, downloadSize, downloadSize);
 
     // Scale and draw overlays onto the download canvas
-    const downloadScale = downloadSize / (qrSize * scale);
-    overlays.forEach(o => {
+    const downloadScaleFactor = downloadSize / (qrSize * scale);
+    textOverlays.forEach(o => {
         const scaledOverlay = {
             ...o,
             position: {
-                x: o.position.x * downloadScale,
-                y: o.position.y * downloadScale
+                x: o.position.x * downloadScaleFactor,
+                y: o.position.y * downloadScaleFactor
             },
-            fontSize: o.fontSize * downloadScale
+            fontSize: o.fontSize * downloadScaleFactor
         };
-        drawOverlay(finalCtx, scaledOverlay);
+        drawTextOverlay(finalCtx, scaledOverlay);
+    });
+    imageOverlays.forEach(o => {
+        const scaledOverlay = {
+            ...o,
+            position: {
+                x: o.position.x * downloadScaleFactor,
+                y: o.position.y * downloadScaleFactor
+            },
+            width: o.width * downloadScaleFactor,
+            height: o.height * downloadScaleFactor
+        };
+        drawImageOverlay(finalCtx, scaledOverlay);
     });
 
     const mimeType = downloadFormat === "jpeg" ? "image/jpeg" : `image/${downloadFormat}`;
@@ -1105,7 +1275,8 @@ export default function QrCodePage() {
             <QrCodePreview
                 qrWrapperRef={qrWrapperRef}
                 canvasRef={canvasRef}
-                activeOverlay={activeOverlay}
+                activeOverlayId={activeOverlayId}
+                activeOverlayType={activeOverlayType}
                 isDragging={isDragging}
                 onMouseDown={handleMouseDown}
                 onTouchStart={handleTouchStart}
@@ -1628,7 +1799,7 @@ export default function QrCodePage() {
                            </AccordionItem>
                            <AccordionItem value="logo" className="border-b-0">
                                <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
-                                   <div className="flex items-center"><Upload className="mr-2 h-5 w-5 text-accent" /> Logo</div>
+                                   <div className="flex items-center"><Upload className="mr-2 h-5 w-5 text-accent" /> Center Logo</div>
                                </AccordionTrigger>
                                <AccordionContent className="px-4 sm:px-6 space-y-4">
                                    <div className="grid gap-2">
@@ -1639,6 +1810,7 @@ export default function QrCodePage() {
                                               <Trash2 className="h-4 w-4"/>
                                           </Button>
                                       </div>
+                                      <p className="text-xs text-muted-foreground">This logo is centered and cannot be moved. For movable images, use Image Overlays.</p>
                                    </div>
                                    {logo && (
                                        <div className="space-y-4 border-t pt-4">
@@ -1658,6 +1830,78 @@ export default function QrCodePage() {
                                    )}
                                </AccordionContent>
                            </AccordionItem>
+                          <AccordionItem value="image-overlay" className="border-b-0">
+                             <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
+                               <div className="flex items-center">
+                                 <ImagePlus className="mr-2 h-5 w-5 text-accent" />
+                                 Image Overlays
+                               </div>
+                             </AccordionTrigger>
+                             <AccordionContent className="px-4 sm:px-6">
+                               <div className="flex items-center justify-between mb-4">
+                                  <div className="grid gap-2">
+                                      <Label>Overlays</Label>
+                                      <Select 
+                                        value={activeOverlayType === 'image' && activeOverlayId ? activeOverlayId.toString() : ""} 
+                                        onValueChange={(id) => {
+                                          setActiveOverlayId(Number(id));
+                                          setActiveOverlayType('image');
+                                        }}
+                                      >
+                                         <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select an image..."/></SelectTrigger>
+                                         <SelectContent>
+                                          {imageOverlays.map(o => <SelectItem key={o.id} value={o.id.toString()}>{o.name}</SelectItem>)}
+                                         </SelectContent>
+                                       </Select>
+                                  </div>
+                                  <Button asChild size="sm">
+                                    <label htmlFor="image-overlay-upload">
+                                      <PlusCircle className="mr-2 h-4 w-4"/>Add Image
+                                      <input id="image-overlay-upload" type="file" accept="image/*" className="sr-only" onChange={addImageOverlay} />
+                                    </label>
+                                  </Button>
+                               </div>
+                               {activeImageOverlay ? (
+                                 <div className="grid gap-4 border-t pt-4">
+                                     <div className="flex items-end gap-2">
+                                       <div className="grid gap-2 flex-grow">
+                                          <Label>Selected Image</Label>
+                                          <div className="p-2 border rounded-md bg-muted text-sm truncate">{activeImageOverlay.name}</div>
+                                       </div>
+                                       <Button variant="destructive" size="icon" onClick={() => deleteImageOverlay(activeImageOverlay.id)}>
+                                           <Trash2 className="h-4 w-4"/>
+                                           <span className="sr-only">Delete image overlay</span>
+                                       </Button>
+                                     </div>
+                                      <div className="grid gap-2">
+                                        <Label>Size: {Math.round(activeImageOverlay.width / scale)}px</Label>
+                                        <Slider 
+                                            value={[activeImageOverlay.width / scale]} 
+                                            onValueChange={(v) => {
+                                                const newWidth = v[0] * scale;
+                                                const originalAspectRatio = activeImageOverlay.htmlImage.height / activeImageOverlay.htmlImage.width;
+                                                updateImageOverlay(activeImageOverlay.id, { width: newWidth, height: newWidth * originalAspectRatio });
+                                            }}
+                                            min={10} max={qrSize} step={1}
+                                        />
+                                      </div>
+                                      <div className="grid gap-2">
+                                        <Label>Rotation: {Math.round(activeImageOverlay.rotation)}°</Label>
+                                        <Slider 
+                                            value={[activeImageOverlay.rotation]} 
+                                            onValueChange={(v) => updateImageOverlay(activeImageOverlay.id, {rotation: v[0]})} 
+                                            min={-180} max={180} step={1}
+                                        />
+                                      </div>
+                                 </div>
+                               ) : (
+                                  <div className="text-center text-muted-foreground p-4 border-t">
+                                      <p>No image overlay selected.</p>
+                                      <p>Add a new one to get started.</p>
+                                  </div>
+                               )}
+                             </AccordionContent>
+                           </AccordionItem>
                           <AccordionItem value="text-overlay" className="border-b-0">
                              <AccordionTrigger className="px-4 sm:px-6 py-4 text-base font-semibold hover:no-underline">
                                <div className="flex items-center">
@@ -1669,34 +1913,38 @@ export default function QrCodePage() {
                                <div className="flex items-center justify-between mb-4">
                                   <div className="grid gap-2">
                                       <Label>Overlays</Label>
-                                       <Select value={activeOverlayId?.toString() ?? ""} onValueChange={(id) => setActiveOverlayId(Number(id))}>
-                                         <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select an overlay..."/></SelectTrigger>
+                                       <Select 
+                                          value={activeOverlayType === 'text' && activeOverlayId ? activeOverlayId.toString() : ""} 
+                                          onValueChange={(id) => {
+                                            setActiveOverlayId(Number(id));
+                                            setActiveOverlayType('text');
+                                          }}
+                                        >
+                                         <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select a text..."/></SelectTrigger>
                                          <SelectContent>
-                                          {overlays.map(o => <SelectItem key={o.id} value={o.id.toString()}>{o.text.substring(0, 20)}</SelectItem>)}
+                                          {textOverlays.map(o => <SelectItem key={o.id} value={o.id.toString()}>{o.text.substring(0, 20)}</SelectItem>)}
                                          </SelectContent>
                                        </Select>
                                   </div>
-                                 <Button onClick={addOverlay} size="sm"><PlusCircle className="mr-2 h-4 w-4"/>Add Text</Button>
+                                 <Button onClick={addTextOverlay} size="sm"><PlusCircle className="mr-2 h-4 w-4"/>Add Text</Button>
                                </div>
-
-                               {activeOverlay ? (
+                               {activeTextOverlay ? (
                                  <div className="grid gap-4 border-t pt-4">
                                      <div className="flex items-end gap-2">
                                        <div className="grid gap-2 flex-grow">
-                                          <Label htmlFor={`text-overlay-input-${activeOverlay.id}`}>Text</Label>
+                                          <Label htmlFor={`text-overlay-input-${activeTextOverlay.id}`}>Text</Label>
                                           <Input
-                                              id={`text-overlay-input-${activeOverlay.id}`}
+                                              id={`text-overlay-input-${activeTextOverlay.id}`}
                                               placeholder="Your text here..."
-                                              value={activeOverlay.text}
-                                              onChange={(e) => updateOverlay(activeOverlay.id, {text: e.target.value})}
+                                              value={activeTextOverlay.text}
+                                              onChange={(e) => updateTextOverlay(activeTextOverlay.id, {text: e.target.value})}
                                           />
                                        </div>
-                                       <Button variant="destructive" size="icon" onClick={() => deleteOverlay(activeOverlay.id)}>
+                                       <Button variant="destructive" size="icon" onClick={() => deleteTextOverlay(activeTextOverlay.id)}>
                                            <Trash2 className="h-4 w-4"/>
                                            <span className="sr-only">Delete overlay</span>
                                        </Button>
                                      </div>
-                                     
                                      <Accordion type="single" defaultValue="font-style" collapsible className="w-full">
                                           <AccordionItem value="font-style">
                                               <AccordionTrigger className="text-base">Font & Style</AccordionTrigger>
@@ -1704,7 +1952,7 @@ export default function QrCodePage() {
                                                   <div className="grid grid-cols-2 gap-4">
                                                    <div className="grid gap-2">
                                                      <Label>Font</Label>
-                                                     <Select value={activeOverlay.fontFamily} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontFamily: v})}>
+                                                     <Select value={activeTextOverlay.fontFamily} onValueChange={(v) => updateTextOverlay(activeTextOverlay.id, {fontFamily: v})}>
                                                        <SelectTrigger><SelectValue /></SelectTrigger>
                                                        <SelectContent>
                                                          <SelectItem value="Inter">Inter</SelectItem>
@@ -1717,18 +1965,18 @@ export default function QrCodePage() {
                                                    </div>
                                                     <ColorInput
                                                      label="Color"
-                                                     value={activeOverlay.color}
-                                                     onChange={handleColorChange(v => updateOverlay(activeOverlay.id, {color: v}))}
+                                                     value={activeTextOverlay.color}
+                                                     onChange={handleColorChange(v => updateTextOverlay(activeTextOverlay.id, {color: v}))}
                                                    />
                                                  </div>
                                                   <div className="grid gap-2">
-                                                    <Label>Font Size: {Math.round(activeOverlay.fontSize / scale)}px</Label>
-                                                    <Slider value={[activeOverlay.fontSize / scale]} onValueChange={(v) => updateOverlay(activeOverlay.id, {fontSize: v[0] * scale})} min={10} max={80} step={1} />
+                                                    <Label>Font Size: {Math.round(activeTextOverlay.fontSize / scale)}px</Label>
+                                                    <Slider value={[activeTextOverlay.fontSize / scale]} onValueChange={(v) => updateTextOverlay(activeTextOverlay.id, {fontSize: v[0] * scale})} min={10} max={80} step={1} />
                                                  </div>
                                                   <div className="grid gap-2">
                                                    <Label>Style</Label>
-                                                   <ToggleGroup type="multiple" value={[activeOverlay.fontWeight, activeOverlay.fontStyle].filter(s => s !== 'normal')} onValueChange={(value) => {
-                                                     updateOverlay(activeOverlay.id, {
+                                                   <ToggleGroup type="multiple" value={[activeTextOverlay.fontWeight, activeTextOverlay.fontStyle].filter(s => s !== 'normal')} onValueChange={(value) => {
+                                                     updateTextOverlay(activeTextOverlay.id, {
                                                        fontWeight: value.includes('bold') ? 'bold' : 'normal',
                                                        fontStyle: value.includes('italic') ? 'italic' : 'normal'
                                                      });
@@ -1744,15 +1992,15 @@ export default function QrCodePage() {
                                               <AccordionContent className="pt-4 space-y-4">
                                                  <div className="grid gap-2">
                                                    <Label>Alignment</Label>
-                                                   <ToggleGroup type="single" value={activeOverlay.textAlign} onValueChange={(value: TextOverlay['textAlign']) => value && updateOverlay(activeOverlay.id, {textAlign: value})}>
+                                                   <ToggleGroup type="single" value={activeTextOverlay.textAlign} onValueChange={(value: TextOverlay['textAlign']) => value && updateTextOverlay(activeTextOverlay.id, {textAlign: value})}>
                                                      <ToggleGroupItem value="left" aria-label="Align left"><AlignLeft className="h-4 w-4" /></ToggleGroupItem>
                                                      <ToggleGroupItem value="center" aria-label="Align center"><AlignCenter className="h-4 w-4" /></ToggleGroupItem>
                                                      <ToggleGroupItem value="right" aria-label="Align right"><AlignRight className="h-4 w-4" /></ToggleGroupItem>
                                                    </ToggleGroup>
                                                  </div>
                                                  <div className="grid gap-2">
-                                                    <Label>Rotation: {activeOverlay.rotation}°</Label>
-                                                    <Slider value={[activeOverlay.rotation]} onValueChange={(v) => updateOverlay(activeOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
+                                                    <Label>Rotation: {activeTextOverlay.rotation}°</Label>
+                                                    <Slider value={[activeTextOverlay.rotation]} onValueChange={(v) => updateTextOverlay(activeTextOverlay.id, {rotation: v[0]})} min={-180} max={180} step={1} />
                                                  </div>
                                               </AccordionContent>
                                           </AccordionItem>
@@ -1822,5 +2070,6 @@ export default function QrCodePage() {
 
 
       
+
 
 
