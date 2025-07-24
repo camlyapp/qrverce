@@ -235,22 +235,26 @@ export default function BarcodePage() {
 
     const drawBarcode = (canvas: HTMLCanvasElement, currentOpts: BarcodeOptions, currentData: string, currentScale: number) => {
         try {
-            const scaledOptions = {
+            const scaledOptions: any = {
                 format: currentOpts.format,
                 width: currentOpts.width * currentScale,
                 height: currentOpts.height * currentScale,
                 displayValue: currentOpts.displayValue,
-                fontOptions: currentOpts.fontOptions,
-                font: currentOpts.font,
-                textAlign: currentOpts.textAlign,
-                textPosition: currentOpts.textPosition,
-                textMargin: currentOpts.textMargin * currentScale,
-                fontSize: currentOpts.fontSize * currentScale,
                 background: currentOpts.background,
                 lineColor: currentOpts.lineColor,
-                fontColor: currentOpts.fontColor,
                 margin: currentOpts.margin * currentScale,
             };
+
+            if (currentOpts.displayValue) {
+                scaledOptions.fontOptions = currentOpts.fontOptions;
+                scaledOptions.font = currentOpts.font;
+                scaledOptions.textAlign = currentOpts.textAlign;
+                scaledOptions.textPosition = currentOpts.textPosition;
+                scaledOptions.textMargin = currentOpts.textMargin * currentScale;
+                scaledOptions.fontSize = currentOpts.fontSize * currentScale;
+                scaledOptions.fontColor = currentOpts.fontColor;
+            }
+
 
             JsBarcode(canvas, currentData, {
                 ...scaledOptions,
