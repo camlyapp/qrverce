@@ -1050,45 +1050,45 @@ export default function QrCodePage() {
                     Download
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-xs">
                   <DialogHeader>
                     <DialogTitle>Download QR Code</DialogTitle>
                   </DialogHeader>
-                  <div className="grid gap-6 py-4">
-                    <div className="grid gap-3">
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
                       <Label>Quality</Label>
-                      <RadioGroup defaultValue={downloadSize.toString()} onValueChange={(v) => setDownloadSize(Number(v))} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <RadioGroup defaultValue={downloadSize.toString()} onValueChange={(v) => setDownloadSize(Number(v))} className="grid grid-cols-2 gap-2">
                         <div>
                             <RadioGroupItem value="256" id="q-low" className="peer sr-only" />
-                            <Label htmlFor="q-low" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            <Label htmlFor="q-low" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
                                 Low
                                 <span className="text-xs text-muted-foreground">256px</span>
                             </Label>
                         </div>
                         <div>
                             <RadioGroupItem value="512" id="q-medium" className="peer sr-only" />
-                            <Label htmlFor="q-medium" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            <Label htmlFor="q-medium" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
                                 Medium
                                 <span className="text-xs text-muted-foreground">512px</span>
                             </Label>
                         </div>
                         <div>
                             <RadioGroupItem value="1024" id="q-hd" className="peer sr-only" />
-                            <Label htmlFor="q-hd" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            <Label htmlFor="q-hd" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
                                 HD
                                 <span className="text-xs text-muted-foreground">1024px</span>
                             </Label>
                         </div>
                          <div>
                             <RadioGroupItem value="4096" id="q-4k" className="peer sr-only" />
-                            <Label htmlFor="q-4k" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            <Label htmlFor="q-4k" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
                                 4K
                                 <span className="text-xs text-muted-foreground">4096px</span>
                             </Label>
                         </div>
                       </RadioGroup>
                     </div>
-                    <div className="grid gap-3">
+                    <div className="grid gap-2">
                       <Label htmlFor="format-select">Format</Label>
                       <Select
                         value={downloadFormat}
@@ -1112,7 +1112,7 @@ export default function QrCodePage() {
                     </DialogClose>
                     <Button onClick={handleDownload}>
                       <Download className="mr-2 h-4 w-4" />
-                      Confirm Download
+                      Confirm
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1838,3 +1838,4 @@ export default function QrCodePage() {
 
 
       
+
