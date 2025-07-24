@@ -18,6 +18,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -45,6 +54,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const PRESET_COLORS = [
     "#000000", "#FFFFFF", "#FF5733", "#33FF57", "#3357FF", "#FF33A1",
@@ -386,6 +396,7 @@ export default function QrCodePage() {
   const [qrContent, setQrContent] = useState("https://firebase.google.com/");
   const [downloadFormat, setDownloadFormat] = useState<FileExtension>("png");
   const [downloadSize, setDownloadSize] = useState(1024);
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   
   const [activeContentType, setActiveContentType] = useState('text');
   
@@ -807,6 +818,7 @@ export default function QrCodePage() {
 
 
   const handleDownload = async () => {
+    setDownloadDialogOpen(false);
     // Create a new QRCodeStyling instance specifically for download
     // to avoid affecting the on-screen preview.
     const downloadQrOptions = {
@@ -1029,41 +1041,84 @@ export default function QrCodePage() {
       <div className="flex-1 grid md:grid-cols-12 gap-px bg-border md:h-[calc(100vh-129px)]">
         <div className="md:col-span-7 lg:col-span-8 bg-background flex flex-col p-4 sm:p-6 items-center justify-center relative">
             <div className="absolute top-4 right-4 flex items-center gap-2 sm:gap-4">
-              <div className="flex items-center gap-2">
-                 <div className="grid gap-2">
-                    <Label htmlFor="download-size" className="sr-only">Download Size</Label>
-                    <Input 
-                      id="download-size"
-                      type="number" 
-                      value={downloadSize} 
-                      onChange={(e) => setDownloadSize(Number(e.target.value))} 
-                      className="w-24 h-9 text-xs"
-                      min={16}
-                      step={16}
-                    />
-                 </div>
-                <Select
-                  value={downloadFormat}
-                  onValueChange={(v) => setDownloadFormat(v as FileExtension)}
-                >
-                  <SelectTrigger id="format-select" className="w-[100px] h-9 text-xs">
-                    <SelectValue placeholder="Format" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="png">PNG</SelectItem>
-                    <SelectItem value="jpeg">JPG</SelectItem>
-                    <SelectItem value="svg">SVG</SelectItem>
-                    <SelectItem value="webp">WEBP</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                onClick={handleDownload}
-                className="w-full sm:w-auto h-9"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </Button>
+              <Dialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    className="w-full sm:w-auto h-9"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Download QR Code</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-6 py-4">
+                    <div className="grid gap-3">
+                      <Label>Quality</Label>
+                      <RadioGroup defaultValue={downloadSize.toString()} onValueChange={(v) => setDownloadSize(Number(v))}>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <RadioGroupItem value="256" id="q-low" className="peer sr-only" />
+                                <Label htmlFor="q-low" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                    Low
+                                    <span className="text-xs text-muted-foreground">256px</span>
+                                </Label>
+                            </div>
+                            <div>
+                                <RadioGroupItem value="512" id="q-medium" className="peer sr-only" />
+                                <Label htmlFor="q-medium" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                    Medium
+                                    <span className="text-xs text-muted-foreground">512px</span>
+                                </Label>
+                            </div>
+                            <div>
+                                <RadioGroupItem value="1024" id="q-hd" className="peer sr-only" />
+                                <Label htmlFor="q-hd" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                    HD
+                                    <span className="text-xs text-muted-foreground">1024px</span>
+                                </Label>
+                            </div>
+                             <div>
+                                <RadioGroupItem value="4096" id="q-4k" className="peer sr-only" />
+                                <Label htmlFor="q-4k" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                    4K
+                                    <span className="text-xs text-muted-foreground">4096px</span>
+                                </Label>
+                            </div>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                    <div className="grid gap-3">
+                      <Label htmlFor="format-select">Format</Label>
+                      <Select
+                        value={downloadFormat}
+                        onValueChange={(v) => setDownloadFormat(v as FileExtension)}
+                      >
+                        <SelectTrigger id="format-select" className="w-full">
+                          <SelectValue placeholder="Format" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="png">PNG</SelectItem>
+                          <SelectItem value="jpeg">JPG</SelectItem>
+                          <SelectItem value="svg">SVG</SelectItem>
+                          <SelectItem value="webp">WEBP</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleDownload}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Confirm Download
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
             <QrCodePreview
                 qrWrapperRef={qrWrapperRef}
@@ -1782,3 +1837,6 @@ export default function QrCodePage() {
 
 
 
+
+
+      
