@@ -329,6 +329,7 @@ const QrCodePreview: FC<{
     activeOverlay: TextOverlay | undefined;
     isDragging: boolean;
     onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
+    onTouchStart: (e: React.TouchEvent<HTMLCanvasElement>) => void;
     qrSize: number;
     scale: number;
 }> = ({
@@ -337,6 +338,7 @@ const QrCodePreview: FC<{
     activeOverlay,
     isDragging,
     onMouseDown,
+    onTouchStart,
     qrSize,
     scale,
 }) => {
@@ -366,6 +368,7 @@ const QrCodePreview: FC<{
                                 isDragging ? "cursor-grabbing" : ""
                             )}
                             onMouseDown={onMouseDown}
+                            onTouchStart={onTouchStart}
                         />
                       </div>
                     </div>
@@ -684,12 +687,12 @@ export default function QrCodePage() {
     drawOverlaysOnly();
   }, [overlays, activeOverlayId]);
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleInteractionStart = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
 
     const clickedOverlay = [...overlays].reverse().find(overlay => {
         const ctx = document.createElement('canvas').getContext('2d')!;
@@ -700,8 +703,8 @@ export default function QrCodePage() {
         const cy = overlay.position.y;
         const angle = overlay.rotation * (Math.PI / 180);
 
-        const dx = mouseX - cx;
-        const dy = mouseY - cy;
+        const dx = x - cx;
+        const dy = y - cy;
 
         const rotatedX = dx * Math.cos(-angle) - dy * Math.sin(-angle);
         const rotatedY = dx * Math.sin(-angle) + dy * Math.cos(-angle);
@@ -709,56 +712,79 @@ export default function QrCodePage() {
         const ascent = textMetrics.actualBoundingBoxAscent;
         const descent = textMetrics.actualBoundingBoxDescent;
 
-        let x = 0;
-        if(overlay.textAlign === 'center') x = -textMetrics.width / 2;
-        if(overlay.textAlign === 'right') x = -textMetrics.width;
+        let boxX = 0;
+        if(overlay.textAlign === 'center') boxX = -textMetrics.width / 2;
+        if(overlay.textAlign === 'right') boxX = -textMetrics.width;
 
-        const y = -ascent;
+        const boxY = -ascent;
         const width = textMetrics.width;
         const height = ascent + descent;
 
-        return rotatedX >= x && rotatedX <= x + width && rotatedY >= y && rotatedY <= y + height;
+        return rotatedX >= boxX && rotatedX <= boxX + width && rotatedY >= boxY && rotatedY <= boxY + height;
     });
 
     if (clickedOverlay) {
         setActiveOverlayId(clickedOverlay.id);
         setIsDragging(true);
-        setDragStart({ x: mouseX - clickedOverlay.position.x, y: mouseY - clickedOverlay.position.y });
+        setDragStart({ x: x - clickedOverlay.position.x, y: y - clickedOverlay.position.y });
     } else {
       setActiveOverlayId(null);
     }
   };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    handleInteractionStart(e.clientX, e.clientY);
+  };
+  
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length > 0) {
+      handleInteractionStart(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
+  const handleInteractionMove = (clientX: number, clientY: number) => {
+    if (!isDragging || !activeOverlay) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
+  
+    setOverlays(overlays.map(o => o.id === activeOverlay.id ? { 
+        ...o, 
+        position: {
+            x: x - dragStart.x,
+            y: y - dragStart.y
+        }
+    } : o));
+  };
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging || !activeOverlay) return;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
-      const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
-  
-      setOverlays(overlays.map(o => o.id === activeOverlay.id ? { 
-          ...o, 
-          position: {
-              x: mouseX - dragStart.x,
-              y: mouseY - dragStart.y
-          }
-      } : o));
+      handleInteractionMove(e.clientX, e.clientY);
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handleInteractionMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
     };
 
-    const handleMouseUp = () => {
+    const handleInteractionEnd = () => {
       if (isDragging) {
           setIsDragging(false);
       }
     };
     
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('mouseup', handleInteractionEnd);
+    window.addEventListener('touchend', handleInteractionEnd);
 
     return () => {
         window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('mouseup', handleInteractionEnd);
+        window.removeEventListener('touchend', handleInteractionEnd);
     };
   }, [isDragging, activeOverlay, dragStart, overlays, scale]);
 
@@ -955,6 +981,7 @@ export default function QrCodePage() {
                 activeOverlay={activeOverlay}
                 isDragging={isDragging}
                 onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
                 qrSize={qrSize}
                 scale={scale}
               />
