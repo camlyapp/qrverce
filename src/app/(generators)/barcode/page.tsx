@@ -66,6 +66,16 @@ const FORMAT_EXAMPLES: { [key: string]: string } = {
     "codabar": "A123456789B"
 };
 
+const FORMAT_HEIGHTS: { [key: string]: { height: number, fixed: boolean } } = {
+    "EAN13": { height: 80, fixed: true },
+    "EAN8": { height: 80, fixed: true },
+    "EAN5": { height: 80, fixed: true },
+    "EAN2": { height: 80, fixed: true },
+    "UPC": { height: 80, fixed: true },
+    "UPCE": { height: 80, fixed: true },
+    "pharmacode": { height: 50, fixed: false },
+};
+
 interface ImageOverlay {
   id: number;
   src: string;
@@ -186,6 +196,8 @@ export default function BarcodePage() {
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [dragMode, setDragMode] = useState<DragMode>('move');
+    const [isHeightFixed, setIsHeightFixed] = useState(false);
+
 
     const activeImageOverlay = activeOverlayType === 'image' ? imageOverlays.find(o => o.id === activeOverlayId) : undefined;
 
@@ -200,7 +212,17 @@ export default function BarcodePage() {
     }
 
     const handleFormatChange = (newFormat: string) => {
-        updateOption('format', newFormat);
+        const formatSettings = FORMAT_HEIGHTS[newFormat];
+        const newHeight = formatSettings ? formatSettings.height : 100;
+        
+        setOptions(prev => ({
+            ...prev,
+            format: newFormat,
+            height: newHeight,
+        }));
+        
+        setIsHeightFixed(formatSettings ? formatSettings.fixed : false);
+
         if (FORMAT_EXAMPLES[newFormat]) {
             setBarcodeData(FORMAT_EXAMPLES[newFormat]);
         }
@@ -229,9 +251,10 @@ export default function BarcodePage() {
                 fontColor: currentOpts.fontColor,
                 margin: currentOpts.margin * currentScale,
             };
+
             JsBarcode(canvas, currentData, {
                 ...scaledOptions,
-                valid: (valid: boolean) => setIsValid(valid)
+                valid: (valid: boolean) => setIsValid(valid),
             });
         } catch (error) {
             setIsValid(false);
@@ -658,7 +681,8 @@ export default function BarcodePage() {
                                 </div>
                                 <div className="grid gap-2">
                                   <Label>Height: {options.height}px</Label>
-                                  <Slider value={[options.height]} onValueChange={(v) => updateOption('height', v[0])} min={20} max={200} step={5} />
+                                  <Slider value={[options.height]} onValueChange={(v) => updateOption('height', v[0])} min={20} max={200} step={5} disabled={isHeightFixed} />
+                                  {isHeightFixed && <p className="text-xs text-muted-foreground">Height is fixed for this barcode type.</p>}
                                 </div>
                              </div>
                         </AccordionContent>
