@@ -766,6 +766,7 @@ export default function QrCodePage() {
 
     const handleTouchMove = (e: TouchEvent) => {
       if (isDragging && activeOverlay && e.touches.length > 0) {
+        e.preventDefault();
         cancelAnimationFrame(animationFrameId);
         animationFrameId = requestAnimationFrame(() => {
           const canvas = canvasRef.current;
@@ -1704,4 +1705,5 @@ export default function QrCodePage() {
     </div>
   );
 }
+
 
