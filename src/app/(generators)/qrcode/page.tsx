@@ -742,49 +742,64 @@ export default function QrCodePage() {
     }
   };
 
-  const handleInteractionMove = (clientX: number, clientY: number) => {
-    if (!isDragging || !activeOverlay) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = (clientX - rect.left) * (canvas.width / rect.width);
-    const y = (clientY - rect.top) * (canvas.height / rect.height);
-  
-    setOverlays(overlays.map(o => o.id === activeOverlay.id ? { 
-        ...o, 
-        position: {
-            x: x - dragStart.x,
-            y: y - dragStart.y
-        }
-    } : o));
-  };
-  
   useEffect(() => {
+    let animationFrameId: number;
+
     const handleMouseMove = (e: MouseEvent) => {
-      handleInteractionMove(e.clientX, e.clientY);
+      if (isDragging && activeOverlay) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(() => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+          const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+          updateOverlay(activeOverlay.id, {
+            position: {
+              x: x - dragStart.x,
+              y: y - dragStart.y,
+            },
+          });
+        });
+      }
     };
+
     const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length > 0) {
-        handleInteractionMove(e.touches[0].clientX, e.touches[0].clientY);
+      if (isDragging && activeOverlay && e.touches.length > 0) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(() => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = (e.touches[0].clientX - rect.left) * (canvas.width / rect.width);
+          const y = (e.touches[0].clientY - rect.top) * (canvas.height / rect.height);
+          updateOverlay(activeOverlay.id, {
+            position: {
+              x: x - dragStart.x,
+              y: y - dragStart.y,
+            },
+          });
+        });
       }
     };
 
     const handleInteractionEnd = () => {
       if (isDragging) {
-          setIsDragging(false);
+        setIsDragging(false);
       }
     };
-    
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('touchmove', handleTouchMove);
-    window.addEventListener('mouseup', handleInteractionEnd);
-    window.addEventListener('touchend', handleInteractionEnd);
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("mouseup", handleInteractionEnd);
+    window.addEventListener("touchend", handleInteractionEnd);
 
     return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('touchmove', handleTouchMove);
-        window.removeEventListener('mouseup', handleInteractionEnd);
-        window.removeEventListener('touchend', handleInteractionEnd);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("mouseup", handleInteractionEnd);
+      window.removeEventListener("touchend", handleInteractionEnd);
+      cancelAnimationFrame(animationFrameId);
     };
   }, [isDragging, activeOverlay, dragStart, overlays, scale]);
 
@@ -1689,3 +1704,4 @@ export default function QrCodePage() {
     </div>
   );
 }
+
