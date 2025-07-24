@@ -1057,7 +1057,7 @@ export default function QrCodePage() {
                   <div className="grid gap-6 py-4">
                     <div className="grid gap-3">
                       <Label>Quality</Label>
-                      <RadioGroup defaultValue={downloadSize.toString()} onValueChange={(v) => setDownloadSize(Number(v))} className="grid grid-cols-2 gap-4">
+                      <RadioGroup defaultValue={downloadSize.toString()} onValueChange={(v) => setDownloadSize(Number(v))} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <RadioGroupItem value="256" id="q-low" className="peer sr-only" />
                             <Label htmlFor="q-low" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
