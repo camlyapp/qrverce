@@ -51,11 +51,11 @@ export default function GeneratorsLayout({
               <ModeToggle />
            </div>
       </header>
-      <div className="flex-grow">{children}</div>
-      <section className="bg-background py-12 md:py-16">
+      <main className="flex-grow">{children}</main>
+      <section id="features" aria-labelledby="features-heading" className="bg-background py-12 md:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl font-headline">
+            <h2 id="features-heading" className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl font-headline">
               Your All-in-One QR Code and Barcode Solution
             </h2>
             <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
@@ -96,16 +96,16 @@ export default function GeneratorsLayout({
             © {year} Camly. All rights reserved.
           </p>
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <nav className="flex gap-4 sm:gap-6 text-sm">
+            <nav aria-label="Footer navigation" className="flex gap-4 sm:gap-6 text-sm">
               <Link href="/terms" className="text-muted-foreground hover:text-foreground">Terms</Link>
               <Link href="/privacy" className="text-muted-foreground hover:text-foreground">Privacy</Link>
               <Link href="/contact" className="text-muted-foreground hover:text-foreground">Contact</Link>
             </nav>
             <div className="hidden sm:block h-5 w-px bg-border" />
             <div className="flex gap-4">
-              <Link href="#"><Twitter className="h-5 w-5 text-muted-foreground hover:text-foreground" /></Link>
-              <Link href="#"><Github className="h-5 w-5 text-muted-foreground hover:text-foreground" /></Link>
-              <Link href="#"><Dribbble className="h-5 w-5 text-muted-foreground hover:text-foreground" /></Link>
+              <Link href="#" aria-label="Twitter profile"><Twitter className="h-5 w-5 text-muted-foreground hover:text-foreground" /></Link>
+              <Link href="#" aria-label="Github profile"><Github className="h-5 w-5 text-muted-foreground hover:text-foreground" /></Link>
+              <Link href="#" aria-label="Dribbble profile"><Dribbble className="h-5 w-5 text-muted-foreground hover:text-foreground" /></Link>
             </div>
           </div>
         </div>
