@@ -1050,43 +1050,27 @@ export default function QrCodePage() {
                     Download
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-xs">
+                <DialogContent className="sm:max-w-[340px]">
                   <DialogHeader>
                     <DialogTitle>Download QR Code</DialogTitle>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
-                      <Label>Quality</Label>
-                      <RadioGroup defaultValue={downloadSize.toString()} onValueChange={(v) => setDownloadSize(Number(v))} className="grid grid-cols-2 gap-2">
-                        <div>
-                            <RadioGroupItem value="256" id="q-low" className="peer sr-only" />
-                            <Label htmlFor="q-low" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                                Low
-                                <span className="text-xs text-muted-foreground">256px</span>
-                            </Label>
-                        </div>
-                        <div>
-                            <RadioGroupItem value="512" id="q-medium" className="peer sr-only" />
-                            <Label htmlFor="q-medium" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                                Medium
-                                <span className="text-xs text-muted-foreground">512px</span>
-                            </Label>
-                        </div>
-                        <div>
-                            <RadioGroupItem value="1024" id="q-hd" className="peer sr-only" />
-                            <Label htmlFor="q-hd" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                                HD
-                                <span className="text-xs text-muted-foreground">1024px</span>
-                            </Label>
-                        </div>
-                         <div>
-                            <RadioGroupItem value="4096" id="q-4k" className="peer sr-only" />
-                            <Label htmlFor="q-4k" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                                4K
-                                <span className="text-xs text-muted-foreground">4096px</span>
-                            </Label>
-                        </div>
-                      </RadioGroup>
+                        <Label htmlFor="quality-select">Quality</Label>
+                        <Select
+                          value={downloadSize.toString()}
+                          onValueChange={(v) => setDownloadSize(Number(v))}
+                        >
+                          <SelectTrigger id="quality-select" className="w-full">
+                            <SelectValue placeholder="Select quality..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="256">Low (256px)</SelectItem>
+                            <SelectItem value="512">Medium (512px)</SelectItem>
+                            <SelectItem value="1024">HD (1024px)</SelectItem>
+                            <SelectItem value="4096">4K (4096px)</SelectItem>
+                          </SelectContent>
+                        </Select>
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="format-select">Format</Label>
@@ -1838,4 +1822,5 @@ export default function QrCodePage() {
 
 
       
+
 
