@@ -142,6 +142,7 @@ interface BarcodeOptions {
     fontSize: number;
     background: string;
     lineColor: string;
+    fontColor: string;
     margin: number;
     font: string;
     fontOptions: string;
@@ -159,6 +160,7 @@ const defaultBarcodeOptions: BarcodeOptions = {
     fontSize: 20,
     background: '#ffffff',
     lineColor: '#000000',
+    fontColor: '#000000',
     margin: 10,
     font: 'monospace',
     fontOptions: ''
@@ -759,6 +761,7 @@ export default function BarcodePage() {
                                         </SelectContent>
                                       </Select>
                                     </div>
+                                    <ColorInput label="Text Color" value={options.fontColor} onChange={handleColorChange(v => updateOption('fontColor', v))} />
                                     <div className="grid gap-2">
                                         <Label>Text Align</Label>
                                         <ToggleGroup type="single" value={options.textAlign} onValueChange={(v: 'left' | 'center' | 'right') => v && updateOption('textAlign', v)}>
@@ -814,5 +817,3 @@ export default function BarcodePage() {
     </div>
   );
 }
-
-    
