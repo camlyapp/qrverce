@@ -4,6 +4,7 @@
 import { WandSparkles, Twitter, Github, Dribbble } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { ModeToggle } from '@/components/mode-toggle';
 
 export default function ContactLayout({
   children,
@@ -26,6 +27,7 @@ export default function ContactLayout({
                    <Link href="/">CodeMint</Link>
                  </h1>
               </div>
+              <ModeToggle />
            </div>
       </header>
       <div className="flex-grow bg-background">{children}</div>

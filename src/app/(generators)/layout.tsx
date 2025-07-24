@@ -6,6 +6,7 @@ import { WandSparkles, Twitter, Github, Dribbble } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { ModeToggle } from '@/components/mode-toggle';
 
 
 export default function GeneratorsLayout({
@@ -47,6 +48,7 @@ export default function GeneratorsLayout({
                 </Tabs>
                 )}
               </div>
+              <ModeToggle />
            </div>
       </header>
       <div className="flex-grow">{children}</div>
