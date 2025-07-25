@@ -541,7 +541,8 @@ export default function BarcodePage() {
                               <SelectItem value="1">Low (1x)</SelectItem>
                               <SelectItem value="2">Medium (2x)</SelectItem>
                               <SelectItem value="4">HD (4x)</SelectItem>
-                              <SelectItem value="8">4K (8x)</SelectItem>
+                              <SelectItem value="8">Ultra HD (4K)</SelectItem>
+                              <SelectItem value="16">8K</SelectItem>
                             </SelectContent>
                           </Select>
                       </div>
