@@ -194,7 +194,7 @@ export default function BarcodePage() {
 
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const [dragMode, setDragMode] = useState<DragMode>('move');
+    const [dragMode, setDragMode] = useState<DragMode>('move' | 'resize-br' | 'rotate');
     const [isHeightFixed, setIsHeightFixed] = useState(false);
 
     const activeImageOverlay = activeOverlayType === 'image' ? imageOverlays.find(o => o.id === activeOverlayId) : undefined;
@@ -230,40 +230,52 @@ export default function BarcodePage() {
         updater(value);
     }
     
-    const drawImageOverlay = (ctx: CanvasRenderingContext2D, overlay: ImageOverlay, currentScale: number) => {
+    const drawImageOverlay = (ctx: CanvasRenderingContext2D, overlay: ImageOverlay) => {
       ctx.save();
-      const scaledPosition = { x: overlay.position.x * currentScale, y: overlay.position.y * currentScale };
-      const scaledWidth = overlay.width * currentScale;
-      const scaledHeight = overlay.height * currentScale;
-
-      ctx.translate(scaledPosition.x, scaledPosition.y);
+      ctx.translate(overlay.position.x, overlay.position.y);
       ctx.rotate((overlay.rotation * Math.PI) / 180);
-      ctx.drawImage(overlay.htmlImage, -scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
+      ctx.drawImage(overlay.htmlImage, -overlay.width / 2, -overlay.height / 2, overlay.width, overlay.height);
 
       if (activeOverlayId === overlay.id && activeOverlayType === 'image') {
         ctx.strokeStyle = '#09f';
         ctx.lineWidth = 2 * scale;
-        ctx.strokeRect(-scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
+        ctx.strokeRect(-overlay.width / 2, -overlay.height / 2, overlay.width, overlay.height);
 
         const handleSize = 8 * scale;
         ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.arc(scaledWidth / 2, scaledHeight / 2, handleSize, 0, 2 * Math.PI);
+        ctx.arc(overlay.width / 2, overlay.height / 2, handleSize, 0, 2 * Math.PI);
         ctx.fill();
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(0, -scaledHeight/2);
-        ctx.lineTo(0, -scaledHeight/2 - 20 * scale);
+        ctx.moveTo(0, -overlay.height/2);
+        ctx.lineTo(0, -overlay.height/2 - 20 * scale);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.arc(0, -scaledHeight/2 - 20 * scale, handleSize, 0, 2 * Math.PI);
+        ctx.arc(0, -overlay.height/2 - 20 * scale, handleSize, 0, 2 * Math.PI);
         ctx.fill();
         ctx.stroke();
       }
       ctx.restore();
     }
+    
+    const getScaledOptions = (opts: BarcodeOptions, scale: number) => {
+        const scaledOptions: any = {
+            ...opts,
+            width: opts.width * scale,
+            height: opts.height * scale,
+            margin: opts.margin * scale,
+        };
+
+        if (opts.displayValue) {
+            scaledOptions.textMargin = opts.textMargin * scale;
+            scaledOptions.fontSize = opts.fontSize * scale;
+        }
+
+        return scaledOptions;
+    };
     
     const drawCompleteBarcode = (
         targetCanvas: HTMLCanvasElement, 
@@ -272,41 +284,34 @@ export default function BarcodePage() {
         currentOverlays: ImageOverlay[],
         currentScale: number
     ) => {
-        const barcodeCanvas = document.createElement('canvas');
+        const scaledOptions = getScaledOptions(currentOpts, currentScale);
+
+        const tempCanvas = document.createElement('canvas');
         try {
-            const scaledOptions: any = {
-                format: currentOpts.format,
-                width: currentOpts.width,
-                height: currentOpts.height,
-                displayValue: currentOpts.displayValue,
-                background: currentOpts.background,
-                lineColor: currentOpts.lineColor,
-                margin: currentOpts.margin,
-            };
-
-            if (currentOpts.displayValue) {
-                scaledOptions.fontOptions = currentOpts.fontOptions;
-                scaledOptions.font = currentOpts.font;
-                scaledOptions.textAlign = currentOpts.textAlign;
-                scaledOptions.textPosition = currentOpts.textPosition;
-                scaledOptions.textMargin = currentOpts.textMargin;
-                scaledOptions.fontSize = currentOpts.fontSize;
-                scaledOptions.fontColor = currentOpts.fontColor;
-            }
-
-            JsBarcode(barcodeCanvas, currentData, {
+            JsBarcode(tempCanvas, currentData, {
                 ...scaledOptions,
                 valid: (valid: boolean) => setIsValid(valid),
             });
             
-            targetCanvas.width = barcodeCanvas.width * currentScale;
-            targetCanvas.height = barcodeCanvas.height * currentScale;
+            targetCanvas.width = tempCanvas.width;
+            targetCanvas.height = tempCanvas.height;
+            targetCanvas.style.width = `${tempCanvas.width / currentScale}px`;
+            targetCanvas.style.height = `${tempCanvas.height / currentScale}px`;
+
             const ctx = targetCanvas.getContext('2d');
             if (!ctx) return;
             
-            ctx.drawImage(barcodeCanvas, 0, 0, targetCanvas.width, targetCanvas.height);
+            ctx.drawImage(tempCanvas, 0, 0);
             
-            currentOverlays.forEach(o => drawImageOverlay(ctx, o, currentScale));
+            currentOverlays.forEach(o => {
+              const scaledOverlay = {
+                  ...o,
+                  position: { x: o.position.x * currentScale, y: o.position.y * currentScale },
+                  width: o.width * currentScale,
+                  height: o.height * currentScale,
+              };
+              drawImageOverlay(ctx, scaledOverlay);
+            });
 
         } catch (error) {
             setIsValid(false);
@@ -317,13 +322,12 @@ export default function BarcodePage() {
         }
     };
 
-
     useEffect(() => {
         const mainCanvas = mainCanvasRef.current;
         if (mainCanvas) {
             drawCompleteBarcode(mainCanvas, options, barcodeData, imageOverlays, scale);
         }
-    }, [barcodeData, options, scale, imageOverlays, activeOverlayId]);
+    }, [barcodeData, options, scale, imageOverlays, activeOverlayId, activeImageOverlay, isDragging]);
 
 
     const handleDownload = () => {
@@ -389,8 +393,8 @@ export default function BarcodePage() {
         const canvas = mainCanvasRef.current;
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
-        const x = (clientX - rect.left) / (rect.width / (canvas.width / scale));
-        const y = (clientY - rect.top) / (rect.height / (canvas.height / scale));
+        const x = (clientX - rect.left) / (rect.width / canvas.offsetWidth);
+        const y = (clientY - rect.top) / (rect.height / canvas.offsetHeight);
 
         const clickedImageOverlay = [...imageOverlays].reverse().find(overlay => {
             const cx = overlay.position.x;
@@ -459,8 +463,8 @@ export default function BarcodePage() {
           const canvas = mainCanvasRef.current;
           if (!canvas) return;
           const rect = canvas.getBoundingClientRect();
-          const x = (clientX - rect.left) / (rect.width / (canvas.width / scale));
-          const y = (clientY - rect.top) / (rect.height / (canvas.height / scale));
+          const x = (clientX - rect.left) / (rect.width / canvas.offsetWidth);
+          const y = (clientY - rect.top) / (rect.height / canvas.offsetHeight);
           
           if (dragMode === 'move') {
               updateImageOverlay(activeOverlayId, {
@@ -479,7 +483,7 @@ export default function BarcodePage() {
               const rotatedDx = dx * Math.cos(-angle) - dy * Math.sin(-angle);
 
               const originalAspectRatio = activeImageOverlay.htmlImage.height / activeImageOverlay.htmlImage.width;
-              const newWidth = Math.abs(rotatedDx * 2);
+              const newWidth = Math.max(10, Math.abs(rotatedDx * 2));
               const newHeight = newWidth * originalAspectRatio;
 
               updateImageOverlay(activeOverlayId, { width: newWidth, height: newHeight });
@@ -595,7 +599,7 @@ export default function BarcodePage() {
                         {barcodeData ? (
                             <canvas 
                                 ref={mainCanvasRef} 
-                                className={cn("max-w-full h-auto", isDragging ? 'cursor-grabbing' : 'cursor-grab')} 
+                                className={cn("max-w-full", isDragging ? 'cursor-grabbing' : 'cursor-grab')} 
                                 onMouseDown={handleMouseDown}
                                 onTouchStart={handleTouchStart}
                             />
@@ -711,7 +715,7 @@ export default function BarcodePage() {
                                             const originalAspectRatio = activeImageOverlay.htmlImage.height / activeImageOverlay.htmlImage.width;
                                             updateImageOverlay(activeImageOverlay.id, { width: newWidth, height: newWidth * originalAspectRatio });
                                         }}
-                                        min={10} max={mainCanvasRef.current ? (mainCanvasRef.current.width / scale) : 300} step={1}
+                                        min={10} max={mainCanvasRef.current ? mainCanvasRef.current.offsetWidth : 300} step={1}
                                     />
                                     </div>
                                     <div className="grid gap-2">
@@ -821,3 +825,4 @@ export default function BarcodePage() {
     </div>
   );
 }
+
